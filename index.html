@@ -79,12 +79,90 @@
       font-weight: 700;
     }
 
-    /* 100% Full-Width & Full-Height Single-Page Split Layout (header & footer auto-hide) */
+    /* ==================== INLINE PRONUNCIATION VOICE-OVER (COMPLICATED WORDS ONLY) ==================== */
+    .pron-word {
+      display: inline;
+      padding: 0 4px 1px 4px;
+      margin: 0 1px;
+      border: none;
+      border-radius: 6px;
+      background-color: #eef2ff;
+      border-bottom: 2px dotted #6366f1;
+      color: #1e1b4b;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background-color 0.15s ease, color 0.15s ease;
+      font-family: inherit;
+      font-size: inherit;
+      line-height: inherit;
+      text-align: left;
+    }
+    .pron-word:hover {
+      background-color: #dbeafe;
+      color: #1d4ed8;
+    }
+    .pron-word.pron-speaking {
+      background-color: #2563eb;
+      color: #ffffff;
+      border-bottom-color: #1e40af;
+    }
+    .pron-word .pron-icon {
+      display: inline-block;
+      font-size: 0.76em;
+      margin-left: 3px;
+      vertical-align: baseline;
+      opacity: 0.85;
+    }
+
+    /* ==================== AUTO-HIDE HEADER & FOOTER ==================== */
+    #stageHeader, #stageFooter {
+      transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease;
+    }
+
+    body.header-autohide #stageHeader {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      transform: translateY(-105%);
+    }
+    body.header-autohide #stageHeader.reveal-bar {
+      transform: translateY(0);
+      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.14);
+    }
+
+    body.footer-autohide #stageFooter {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      transform: translateY(105%);
+    }
+    body.footer-autohide #stageFooter.reveal-bar {
+      transform: translateY(0);
+      box-shadow: 0 -10px 28px rgba(15, 23, 42, 0.12);
+    }
+
+    /* Edge Hover / Touch Trigger Zones */
+    #topHoverZone, #bottomHoverZone {
+      display: none;
+    }
+    body.header-autohide #topHoverZone {
+      display: flex;
+    }
+    body.footer-autohide #bottomHoverZone {
+      display: flex;
+    }
+
+    /* 100% Full-Width Single-Page Split Layout (Expands Automatically When Bars Hide) */
     @media (min-width: 1024px) {
       .single-page-split {
-        height: calc(100vh - 28px);
-        min-height: 520px;
+        height: calc(100vh - var(--bars-offset, 195px));
+        min-height: 500px;
       }
+      body.header-autohide:not(.footer-autohide) { --bars-offset: 92px; }
+      body.footer-autohide:not(.header-autohide) { --bars-offset: 138px; }
+      body.header-autohide.footer-autohide { --bars-offset: 28px; }
       .split-pane {
         height: 100%;
         overflow-y: auto;
@@ -112,18 +190,35 @@
       body { background: #ffffff !important; }
       .studio-card { break-inside: avoid; border: 1px solid #cbd5e1; box-shadow: none; }
       .single-page-split, .split-pane { height: auto !important; overflow: visible !important; }
+      .pron-word {
+        background: transparent !important;
+        border: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        color: inherit !important;
+      }
+      .pron-word .pron-icon { display: none !important; }
     }
   </style>
 </head>
 <body class="font-scale-md bg-white text-slate-900 min-h-screen flex flex-col">
 
-  <!-- ==================== TOP EDGE MOUSE / TOUCH TRIGGER HOTZONE ==================== -->
-  <div id="topHotzone" class="no-print fixed top-0 left-0 right-0 h-8 z-40 flex items-start justify-center pt-1 cursor-pointer" title="Hover or touch top edge to show controls">
-    <span class="w-16 h-1 rounded-full bg-slate-300/80 transition-opacity duration-300"></span>
+  <!-- ==================== TOP EDGE MOUSE / TOUCH REVEAL TRIGGER ==================== -->
+  <div id="topHoverZone"
+       onmouseenter="revealHeader()"
+       ontouchstart="revealHeader()"
+       onclick="revealHeader()"
+       class="no-print fixed top-0 left-0 right-0 h-6 z-[45] items-start justify-center cursor-pointer select-none group">
+    <div class="px-4 py-0.5 rounded-b-xl bg-slate-900/75 group-hover:bg-blue-600 text-white text-[11px] font-bold tracking-wide shadow-md backdrop-blur-sm transition">
+      ⌄ Touch / Hover for Header
+    </div>
   </div>
 
-  <!-- ==================== AUTO-HIDING TOP STAGE CONTROL BAR ==================== -->
-  <header id="stageHeader" class="no-print fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-lg transition-all duration-300 ease-out -translate-y-full opacity-0 pointer-events-none">
+  <!-- ==================== STICKY / AUTO-HIDE TOP STAGE CONTROL BAR ==================== -->
+  <header id="stageHeader"
+          onmouseenter="keepHeaderOpen()"
+          onmouseleave="scheduleHideHeader()"
+          class="no-print sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm">
     <!-- Top Progress Line -->
     <div class="w-full h-1.5 bg-slate-100">
       <div id="completionProgressBar" class="h-full bg-gradient-to-r from-blue-600 to-emerald-600 transition-all duration-300" style="width: 0%;"></div>
@@ -142,7 +237,7 @@
               0 / 13 Done
             </span>
           </div>
-          <p class="text-[11px] sm:text-xs text-slate-500 font-medium">Tablet Stage Teleprompter • 45 Min • 25 Slides</p>
+          <p class="text-[11px] sm:text-xs text-slate-500 font-medium">Tablet Stage Teleprompter • 45 Min • 25 Slides • Tap 🔊 words or paste below</p>
         </div>
       </div>
 
@@ -163,8 +258,8 @@
         </button>
       </div>
 
-      <!-- Tablet Ergonomics: Font Scale, View Mode, Wake Lock -->
-      <div class="flex items-center gap-1.5 sm:gap-2">
+      <!-- Tablet Ergonomics: Font Scale, View Mode, Auto-Hide Bars, Fullscreen, Wake Lock -->
+      <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
         <!-- Font Scaler -->
         <div class="inline-flex items-center bg-slate-50 border border-slate-200 rounded-xl p-0.5" role="group" aria-label="Text Size">
           <button onclick="setFontScale('sm')" id="fontBtn-sm" class="font-scale-btn px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900">A-</button>
@@ -178,6 +273,21 @@
           📜 Show All 13
         </button>
 
+        <!-- Auto-Hide Header Toggle -->
+        <button id="autoHideHeaderBtn" onclick="toggleAutoHideHeader()" title="Hide header and show on mouse hover or touch" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 text-xs font-bold transition">
+          ⬆ Hide Top
+        </button>
+
+        <!-- Auto-Hide Footer (Prev/Next) Toggle -->
+        <button id="autoHideFooterBtn" onclick="toggleAutoHideFooter()" title="Hide Previous/Next bar and show on mouse hover or touch" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 text-xs font-bold transition">
+          ⬇ Hide Nav
+        </button>
+
+        <!-- Full Screen Toggle -->
+        <button id="fullscreenBtn" onclick="toggleFullScreen()" title="Toggle Full Screen Mode" class="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-sm transition">
+          ⛶ Fullscreen
+        </button>
+
         <!-- Screen Wake Lock Toggle -->
         <button id="wakeLockBtn" onclick="toggleWakeLock()" title="Keep Tablet Screen Awake on Stage" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 text-xs font-bold transition">
           ☀️ Awake: OFF
@@ -185,17 +295,40 @@
       </div>
     </div>
 
-    <!-- Secondary Filter & Navigation Bar: Search + Slide Jump + Horizontal Segment Pills -->
+    <!-- Secondary Filter, Instant Pronunciation & Navigation Bar -->
     <div class="border-t border-slate-100 bg-slate-50/70">
-      <div class="w-full max-w-none mx-auto px-3 sm:px-6 py-2 flex flex-col md:flex-row md:items-center gap-2">
-        <!-- Search & Slide Jump -->
-        <div class="flex items-center gap-2 shrink-0">
-          <div class="relative flex-1 md:w-52">
-            <input id="scriptSearchInput" type="search" oninput="handleSearchInput()" placeholder="🔍 Search script / keyword..." class="w-full px-3 py-1.5 rounded-xl bg-white border border-slate-300 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600" />
+      <div class="w-full max-w-none mx-auto px-3 sm:px-6 py-2 flex flex-col xl:flex-row xl:items-center gap-2">
+        <!-- Search, Slide Jump & Instant Paste-to-Pronounce Section -->
+        <div class="flex flex-wrap items-center gap-2 shrink-0">
+          <!-- Search Script -->
+          <div class="relative flex-1 sm:flex-none sm:w-44">
+            <input id="scriptSearchInput" type="search" oninput="handleSearchInput()" placeholder="🔍 Search script..." class="w-full px-3 py-1.5 rounded-xl bg-white border border-slate-300 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600" />
           </div>
-          <select id="slideJumpSelect" onchange="jumpToSlide(this.value)" class="px-3 py-1.5 rounded-xl bg-white border border-slate-300 text-xs sm:text-sm font-bold text-blue-700 focus:outline-none focus:border-blue-600">
-            <option value="">🎞️ Jump to Slide (1–25)</option>
+
+          <!-- Jump to Slide -->
+          <select id="slideJumpSelect" onchange="jumpToSlide(this.value)" class="px-2.5 py-1.5 rounded-xl bg-white border border-slate-300 text-xs sm:text-sm font-bold text-blue-700 focus:outline-none focus:border-blue-600">
+            <option value="">🎞️ Slide (1–25)</option>
           </select>
+
+          <!-- Instant Pronunciation Box (Paste Word -> Auto Pronounce) -->
+          <div class="flex items-center gap-1 bg-indigo-50/90 border border-indigo-200 rounded-xl p-1 flex-1 sm:flex-none">
+            <input id="instantPronInput"
+                   type="text"
+                   onpaste="handleInstantPronPaste()"
+                   onkeydown="if(event.key === 'Enter'){ event.preventDefault(); speakPastedWord(false); }"
+                   placeholder="🔊 Paste word for instant pronunciation..."
+                   class="w-full sm:w-56 px-2.5 py-1 rounded-lg bg-white border border-indigo-200 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600"
+                   aria-label="Paste word for instant pronunciation" />
+            <button id="instantPronSpeakBtn" type="button" onclick="speakPastedWord(false)" title="Pronounce Now (Normal Speed)" class="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-xs font-bold transition whitespace-nowrap">
+              🔊 Speak
+            </button>
+            <button type="button" onclick="speakPastedWord(true)" title="Pronounce Slowly (0.6x Speed)" class="px-2 py-1 rounded-lg bg-white hover:bg-indigo-100 border border-indigo-200 text-indigo-700 text-xs font-bold transition" aria-label="Speak Slowly">
+              🐢
+            </button>
+            <button type="button" onclick="clearInstantPron()" title="Clear &amp; Stop Voice" class="px-1.5 py-1 rounded-lg bg-white hover:bg-rose-50 border border-indigo-200 text-slate-500 hover:text-rose-600 text-xs font-bold transition" aria-label="Clear Pronunciation Input">
+              ✕
+            </button>
+          </div>
         </div>
 
         <!-- Horizontal Touch-Scrollable Segment Pill Tabs -->
@@ -207,9 +340,9 @@
   </header>
 
   <!-- ==================== MAIN TELEPROMPTER CONTENT AREA (100% WIDTH) ==================== -->
-  <main class="flex-1 w-full max-w-none mx-auto px-3 sm:px-5 py-3">
-    <!-- Status Toast -->
-    <div id="toastBanner" class="hidden fixed bottom-20 right-5 z-50 px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs sm:text-sm font-bold shadow-xl"></div>
+  <main id="mainStageArea" onclick="dismissRevealedBarsOnTap()" class="flex-1 w-full max-w-none mx-auto px-3 sm:px-5 py-3 sm:py-4">
+    <!-- Status & Pronunciation Toast -->
+    <div id="toastBanner" class="hidden fixed bottom-24 right-5 z-[60] max-w-md px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs sm:text-sm font-bold shadow-xl font-ml"></div>
 
     <!-- Segments Container -->
     <div id="segmentsContainer" class="w-full space-y-6">
@@ -217,22 +350,36 @@
     </div>
   </main>
 
-  <!-- ==================== BOTTOM EDGE MOUSE / TOUCH TRIGGER HOTZONE ==================== -->
-  <div id="bottomHotzone" class="no-print fixed bottom-0 left-0 right-0 h-8 z-30 flex items-end justify-center pb-1 cursor-pointer" title="Hover or touch bottom edge to show Previous/Next navigation">
-    <span class="w-16 h-1 rounded-full bg-slate-300/80 transition-opacity duration-300"></span>
+  <!-- ==================== BOTTOM EDGE MOUSE / TOUCH REVEAL TRIGGER ==================== -->
+  <div id="bottomHoverZone"
+       onmouseenter="revealFooter()"
+       ontouchstart="revealFooter()"
+       onclick="revealFooter()"
+       class="no-print fixed bottom-0 left-0 right-0 h-6 z-[45] items-end justify-center cursor-pointer select-none group">
+    <div class="px-4 py-0.5 rounded-t-xl bg-slate-900/75 group-hover:bg-blue-600 text-white text-[11px] font-bold tracking-wide shadow-md backdrop-blur-sm transition">
+      ⌃ Touch / Hover for Prev / Next
+    </div>
   </div>
 
-  <!-- ==================== AUTO-HIDING BOTTOM TOUCH NAVIGATION BAR ==================== -->
-  <footer id="stageFooter" class="no-print fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-lg transition-all duration-300 ease-out translate-y-full opacity-0 pointer-events-none">
+  <!-- ==================== STICKY / AUTO-HIDE BOTTOM TOUCH NAVIGATION BAR ==================== -->
+  <footer id="stageFooter"
+          onmouseenter="keepFooterOpen()"
+          onmouseleave="scheduleHideFooter()"
+          class="no-print sticky bottom-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-sm">
     <div class="w-full max-w-none mx-auto px-3 sm:px-6 py-3 flex items-center justify-between gap-3">
       <button id="prevSegBtn" onclick="navigateSegment(-1)" class="px-4 sm:px-6 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 active:scale-95 disabled:opacity-40 disabled:pointer-events-none border border-slate-300 text-slate-900 font-extrabold text-xs sm:text-sm flex items-center gap-2 transition">
         <span>←</span>
         <span>Previous Segment</span>
       </button>
 
-      <div class="text-center">
-        <div id="activeSegIndicator" class="text-xs sm:text-sm font-black text-blue-700">Segment 1 of 13</div>
-        <div id="activeTimeIndicator" class="text-[11px] text-slate-500 font-semibold">00:00 – 02:30 Min • Slides 1–2</div>
+      <div class="flex items-center gap-3 text-center">
+        <div>
+          <div id="activeSegIndicator" class="text-xs sm:text-sm font-black text-blue-700">Segment 1 of 13</div>
+          <div id="activeTimeIndicator" class="text-[11px] text-slate-500 font-semibold">00:00 – 02:30 Min • Slides 1–2</div>
+        </div>
+        <button id="footerSelfToggleBtn" onclick="toggleAutoHideFooter()" title="Toggle Auto-Hide for Bottom Bar" class="hidden sm:inline-flex items-center px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 text-[11px] font-bold transition">
+          ⬇ Auto-Hide
+        </button>
       </div>
 
       <button id="nextSegBtn" onclick="navigateSegment(1)" class="px-5 sm:px-7 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-95 disabled:opacity-40 disabled:pointer-events-none text-white font-extrabold text-xs sm:text-sm flex items-center gap-2 shadow-sm transition">
@@ -243,6 +390,206 @@
   </footer>
 
   <script>
+    // ==================== PRONUNCIATION DICTIONARY (COMPLICATED / TRICKY WORDS ONLY) ====================
+    // Each entry attaches an inline clickable 🔊 voice-over button ONLY to these concerned words.
+    const PRONUNCIATION_WORDS = [
+      { term: "Susan Wojcicki", speakAs: "Susan Wo-jit-skee", phonetic: "SOO-zun woh-JIT-skee", mlHint: "സൂസൻ വൊജിറ്റ്സ്കി" },
+      { term: "Justin Rosenstein", speakAs: "Justin Ro-zen-stine", phonetic: "JUS-tin ROH-zen-styn", mlHint: "ജസ്റ്റിൻ റോസൻസ്റ്റൈൻ" },
+      { term: "Daniel Kahneman", speakAs: "Daniel Kah-nuh-man", phonetic: "DAN-yul KAH-nuh-mun", mlHint: "ഡാനിയൽ കാനമൻ" },
+      { term: "Aza Raskin", speakAs: "Ah-za Ras-kin", phonetic: "AH-zuh RAS-kin", mlHint: "ആസ റാസ്കിൻ" },
+      { term: "Waldorf Schools", speakAs: "Wall-dorf Schools", phonetic: "WAWL-dorf skoolz", mlHint: "വാൾഡോർഫ് സ്കൂൾസ്" },
+      { term: "Euclidean Geometry", speakAs: "You-klid-ee-an Geometry", phonetic: "yoo-KLID-ee-un jee-OM-uh-tree", mlHint: "യൂക്ലിഡിയൻ ജ്യോമെട്രി" },
+      { term: "Phantom Vibration Syndrome", speakAs: "Phantom Vibration Syndrome", phonetic: "FAN-tum vy-BRAY-shun SIN-drohm", mlHint: "ഫാന്റം വൈബ്രേഷൻ സിൻഡ്രോം" },
+      { term: "Text Neck Syndrome", speakAs: "Text Neck Syndrome", phonetic: "tekst nek SIN-drohm", mlHint: "ടെക്സ്റ്റ് നെക്ക് സിൻഡ്രോം" },
+      { term: "Behavioral Engineering", speakAs: "Behavioral Engineering", phonetic: "bi-HAYV-yur-ul en-jih-NEER-ing", mlHint: "ബിഹേവിയറൽ എഞ്ചിനീയറിംഗ്" },
+      { term: "Non-Playable Characters", speakAs: "Non-Playable Characters", phonetic: "non PLAY-uh-bul KAR-ik-turz", mlHint: "നോൺ-പ്ലേയബിൾ ക്യാരക്ടേഴ്സ്" },
+      { term: "Cognitive Hijacking", speakAs: "Cognitive Hijacking", phonetic: "KOG-nih-tiv HY-jak-ing", mlHint: "കോഗ്നിറ്റീവ് ഹൈജാക്കിംഗ്" },
+      { term: "Cognitive Capacity", speakAs: "Cognitive Capacity", phonetic: "KOG-nih-tiv kuh-PAS-ih-tee", mlHint: "കോഗ്നിറ്റീവ് കപ്പാസിറ്റി" },
+      { term: "Economic Exploitation", speakAs: "Economic Exploitation", phonetic: "ek-uh-NOM-ik ek-sploy-TAY-shun", mlHint: "എക്കണോമിക് എക്സ്പ്ലോയിറ്റേഷൻ" },
+      { term: "Validation Addiction", speakAs: "Validation Addiction", phonetic: "val-ih-DAY-shun uh-DIK-shun", mlHint: "വാലിഡേഷൻ അഡിക്ഷൻ" },
+      { term: "Unstated Assumptions", speakAs: "Unstated Assumptions", phonetic: "un-STAY-tid uh-SUMP-shunz", mlHint: "അൺസ്റ്റേറ്റഡ് അസംപ്ഷൻസ്" },
+      { term: "Attention Residue", speakAs: "Attention Residue", phonetic: "uh-TEN-shun REZ-ih-dyoo", mlHint: "അറ്റൻഷൻ റെസിഡ്യൂ" },
+      { term: "AI Hallucination", speakAs: "A I Hallucination", phonetic: "ay-eye huh-loo-sih-NAY-shun", mlHint: "എ.ഐ ഹാലൂസിനേഷൻ" },
+      { term: "Hallucination", speakAs: "Hallucination", phonetic: "huh-loo-sih-NAY-shun", mlHint: "ഹാലൂസിനേഷൻ" },
+      { term: "Prompt Engineering", speakAs: "Prompt Engineering", phonetic: "prompt en-jih-NEER-ing", mlHint: "പ്രോംപ്റ്റ് എഞ്ചിനീയറിംഗ്" },
+      { term: "Digital Anxiety", speakAs: "Digital Anxiety", phonetic: "DIJ-ih-tul ang-ZY-uh-tee", mlHint: "ഡിജിറ്റൽ ആങ്സൈറ്റി" },
+      { term: "Digital Empathy", speakAs: "Digital Empathy", phonetic: "DIJ-ih-tul EM-puh-thee", mlHint: "ഡിജിറ്റൽ എംപതി" },
+      { term: "Intellectual Ego", speakAs: "Intellectual Ego", phonetic: "in-tuh-LEK-choo-ul EE-goh", mlHint: "ഇന്റലക്ച്വൽ ഈഗോ" },
+      { term: "Lateral Thinking", speakAs: "Lateral Thinking", phonetic: "LAT-ur-ul THING-king", mlHint: "ലാറ്ററൽ തിങ്കിംഗ്" },
+      { term: "Vertical Thinking", speakAs: "Vertical Thinking", phonetic: "VUR-ti-kul THING-king", mlHint: "വെർട്ടിക്കൽ തിങ്കിംഗ്" },
+      { term: "Physical Radius", speakAs: "Physical Radius", phonetic: "FIZ-i-kul RAY-dee-us", mlHint: "ഫിസിക്കൽ റേഡിയസ്" },
+      { term: "Gaming Disorder", speakAs: "Gaming Disorder", phonetic: "GAY-ming dis-OR-dur", mlHint: "ഗെയിമിംഗ് ഡിസോർഡർ" },
+      { term: "Self-Efficacy", speakAs: "Self Eff-ih-kuh-see", phonetic: "self EF-ih-kuh-see", mlHint: "സെൽഫ്-എഫിക്കസി" },
+      { term: "Psychological", speakAs: "Sigh-ko-lo-ji-kal", phonetic: "sy-kuh-LOJ-i-kul", mlHint: "സൈക്കോളജിക്കൽ" },
+      { term: "Neuroscience", speakAs: "Neuro-science", phonetic: "NYOOR-oh-sy-uns", mlHint: "ന്യൂറോസയൻസ്" },
+      { term: "Cyberbullying", speakAs: "Cyber-bullying", phonetic: "SY-bur-BUL-ee-ing", mlHint: "സൈബർബുള്ളിയിംഗ്" },
+      { term: "Protagonist", speakAs: "Pro-tag-o-nist", phonetic: "proh-TAG-uh-nist", mlHint: "പ്രൊട്ടാഗണിസ്റ്റ്" },
+      { term: "Multitasking", speakAs: "Multi-tasking", phonetic: "MUL-tee-tas-king", mlHint: "മൾട്ടിടാസ്കിംഗ്" },
+      { term: "Stroop Effect", speakAs: "Stroop Effect", phonetic: "STROOP ih-FEKT", mlHint: "സ്ട്രൂപ്പ് ഇഫക്റ്റ്" },
+      { term: "Analytical", speakAs: "Analytical", phonetic: "an-uh-LIT-i-kul", mlHint: "അനലിറ്റിക്കൽ" },
+      { term: "Melatonin", speakAs: "Mel-uh-tone-in", phonetic: "mel-uh-TOH-nin", mlHint: "മെലറ്റോണിൻ" },
+      { term: "Endorphins", speakAs: "En-dor-fins", phonetic: "en-DOR-finz", mlHint: "എൻഡോർഫിൻസ്" },
+      { term: "Aggression", speakAs: "Uh-gresh-un", phonetic: "uh-GRESH-un", mlHint: "അഗ്രഷൻ" },
+      { term: "Algorithm", speakAs: "Al-go-ri-thm", phonetic: "AL-guh-rith-um", mlHint: "അൽഗോരിതം" },
+      { term: "EXIF Data", speakAs: "Ex-if Data", phonetic: "EG-zif DAY-tuh", mlHint: "എക്സിഫ് ഡാറ്റ" },
+      { term: "EXIF", speakAs: "Ex-if", phonetic: "EG-zif", mlHint: "എക്സിഫ്" },
+      { term: "Money Mule", speakAs: "Money Myool", phonetic: "MUN-ee myool", mlHint: "മണി മ്യൂൾ" },
+      { term: "Deepfakes", speakAs: "Deep-fakes", phonetic: "DEEP-fayks", mlHint: "ഡീപ്ഫേക്സ്" },
+      { term: "Deepfake", speakAs: "Deep-fake", phonetic: "DEEP-fayk", mlHint: "ഡീപ്ഫേക്ക്" },
+      { term: "Phishing", speakAs: "Fishing", phonetic: "FISH-ing", mlHint: "ഫിഷിംഗ്" },
+      { term: "Smishing", speakAs: "Smishing", phonetic: "SMISH-ing", mlHint: "സ്മിഷിംഗ്" },
+      { term: "Protocol", speakAs: "Pro-to-kol", phonetic: "PROH-tuh-kol", mlHint: "പ്രോട്ടോക്കോൾ" },
+      { term: "Grayscale", speakAs: "Gray-scale", phonetic: "GRAY-skayl", mlHint: "ഗ്രേസ്കെയിൽ" },
+      { term: "Portfolio", speakAs: "Port-fo-lee-o", phonetic: "port-FOH-lee-oh", mlHint: "പോർട്ട്‌ഫോളിയോ" },
+      { term: "Manifesto", speakAs: "Man-ih-fes-to", phonetic: "man-ih-FES-toh", mlHint: "മാനിഫെസ്റ്റോ" },
+      { term: "Coursera", speakAs: "Cor-sair-uh", phonetic: "kor-SAIR-uh", mlHint: "കോഴ്സെറ" },
+      { term: "Empathy", speakAs: "Em-puh-thee", phonetic: "EM-puh-thee", mlHint: "എംപതി" },
+      { term: "Rapport", speakAs: "Ruh-pore", phonetic: "ra-POR (silent t)", mlHint: "റപ്പോർ" },
+      { term: "Friction", speakAs: "Frik-shun", phonetic: "FRIK-shun", mlHint: "ഫ്രിക്ഷൻ" },
+      { term: "Batching", speakAs: "Bach-ing", phonetic: "BACH-ing", mlHint: "ബാച്ചിംഗ്" },
+      { term: "SWAYAM", speakAs: "Swa-yum", phonetic: "SVAH-yum", mlHint: "സ്വയം" },
+      { term: "DIKSHA", speakAs: "Deek-sha", phonetic: "DEEK-shaa", mlHint: "ദീക്ഷ" },
+      { term: "NPTEL", speakAs: "N P T E L", phonetic: "en-pee-tel", mlHint: "എൻ.പി.ടി.ഇ.എൽ" },
+      { term: "OECD", speakAs: "O E C D", phonetic: "oh-ee-see-dee", mlHint: "ഒ.ഇ.സി.ഡി" },
+      { term: "FOMO", speakAs: "Fo-mo", phonetic: "FOH-moh", mlHint: "ഫോമോ" },
+      { term: "Leash", speakAs: "Leesh", phonetic: "leesh", mlHint: "ലീഷ്" }
+    ];
+
+    // Sort longest terms first so multi-word phrases match before shorter sub-words
+    const SORTED_PRON_WORDS = [...PRONUNCIATION_WORDS].sort((a, b) => b.term.length - a.term.length);
+    const PRON_LOOKUP = {};
+    SORTED_PRON_WORDS.forEach(item => {
+      PRON_LOOKUP[item.term.toLowerCase()] = item;
+    });
+    const PRON_REGEX = new RegExp(
+      `(^|[^A-Za-z0-9])(${SORTED_PRON_WORDS.map(w => w.term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})(?=$|[^A-Za-z0-9])`,
+      'gi'
+    );
+
+    let cachedEnglishVoice = null;
+    let cachedMalayalamVoice = null;
+
+    function loadPreferredVoice() {
+      if (!('speechSynthesis' in window)) return;
+      const voices = window.speechSynthesis.getVoices() || [];
+      cachedEnglishVoice =
+        voices.find(v => /Google US English/i.test(v.name)) ||
+        voices.find(v => v.lang === 'en-IN') ||
+        voices.find(v => v.lang === 'en-US') ||
+        voices.find(v => v.lang === 'en-GB') ||
+        voices.find(v => v.lang && v.lang.toLowerCase().startsWith('en')) ||
+        null;
+      cachedMalayalamVoice =
+        voices.find(v => v.lang && v.lang.toLowerCase().startsWith('ml')) ||
+        null;
+    }
+    if ('speechSynthesis' in window) {
+      loadPreferredVoice();
+      window.speechSynthesis.onvoiceschanged = loadPreferredVoice;
+    }
+
+    function speakWord(lowerKey, btnEl) {
+      const entry = PRON_LOOKUP[lowerKey];
+      if (!entry) return;
+
+      showToast(`🔊 ${entry.term}  •  ${entry.phonetic}  (${entry.mlHint})`, 4000);
+
+      if (!('speechSynthesis' in window)) return;
+
+      try {
+        window.speechSynthesis.cancel();
+        document.querySelectorAll('.pron-word.pron-speaking').forEach(el => el.classList.remove('pron-speaking'));
+
+        const utter = new SpeechSynthesisUtterance(entry.speakAs || entry.term);
+        if (cachedEnglishVoice) utter.voice = cachedEnglishVoice;
+        utter.lang = cachedEnglishVoice ? cachedEnglishVoice.lang : 'en-US';
+        utter.rate = 0.85;
+        utter.pitch = 1.0;
+
+        if (btnEl) {
+          btnEl.classList.add('pron-speaking');
+          utter.onend = () => btnEl.classList.remove('pron-speaking');
+          utter.onerror = () => btnEl.classList.remove('pron-speaking');
+        }
+        window.speechSynthesis.speak(utter);
+      } catch (err) {
+        // Phonetic toast is already visible as fallback
+      }
+    }
+
+    // ==================== HEADER INSTANT PASTE-TO-PRONOUNCE ====================
+    function handleInstantPronPaste() {
+      // Wait 30ms so the pasted text populates the input value, then pronounce immediately
+      setTimeout(() => speakPastedWord(false), 30);
+    }
+
+    function speakPastedWord(isSlow = false) {
+      const input = document.getElementById('instantPronInput');
+      const speakBtn = document.getElementById('instantPronSpeakBtn');
+      const rawText = (input.value || '').trim();
+
+      if (!rawText) {
+        showToast('Paste or type any word in the header box to hear instant pronunciation!');
+        input.focus();
+        return;
+      }
+
+      if (!('speechSynthesis' in window)) {
+        showToast('Voice pronunciation is not supported on this browser.');
+        return;
+      }
+
+      // Check if pasted word matches our tuned stage dictionary
+      const dictEntry = PRON_LOOKUP[rawText.toLowerCase()];
+      const textToSpeak = dictEntry ? (dictEntry.speakAs || dictEntry.term) : rawText;
+      const isMalayalam = /[\u0D00-\u0D7F]/.test(rawText);
+
+      if (dictEntry) {
+        showToast(`🔊 ${dictEntry.term}  •  ${dictEntry.phonetic}  (${dictEntry.mlHint})${isSlow ? ' [Slow]' : ''}`, 4200);
+      } else {
+        showToast(`🔊 Pronouncing${isSlow ? ' (Slow)' : ''}: "${rawText}"`, 3500);
+      }
+
+      try {
+        window.speechSynthesis.cancel();
+        document.querySelectorAll('.pron-word.pron-speaking').forEach(el => el.classList.remove('pron-speaking'));
+
+        const utter = new SpeechSynthesisUtterance(textToSpeak);
+        if (isMalayalam && cachedMalayalamVoice) {
+          utter.voice = cachedMalayalamVoice;
+          utter.lang = cachedMalayalamVoice.lang;
+        } else if (isMalayalam) {
+          utter.lang = 'ml-IN';
+        } else {
+          if (cachedEnglishVoice) utter.voice = cachedEnglishVoice;
+          utter.lang = cachedEnglishVoice ? cachedEnglishVoice.lang : 'en-US';
+        }
+
+        utter.rate = isSlow ? 0.6 : 0.88;
+        utter.pitch = 1.0;
+
+        if (speakBtn) {
+          speakBtn.textContent = '🔈 Playing...';
+          utter.onend = () => { speakBtn.textContent = '🔊 Speak'; };
+          utter.onerror = () => { speakBtn.textContent = '🔊 Speak'; };
+        }
+        window.speechSynthesis.speak(utter);
+      } catch (err) {
+        showToast('Could not play pronunciation audio.');
+      }
+    }
+
+    function clearInstantPron() {
+      const input = document.getElementById('instantPronInput');
+      const speakBtn = document.getElementById('instantPronSpeakBtn');
+      input.value = '';
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+      if (speakBtn) speakBtn.textContent = '🔊 Speak';
+      input.focus();
+    }
+
     // ==================== COMPLETE 13-SEGMENT MASTER TELEPROMPTER DATA ====================
     const MASTER_SEGMENTS = [
       {
@@ -377,7 +724,7 @@
           }
         ],
         lifeRelation: "Cognitive Hijacking in the Exam Hall: അപകടത്തെ സൂചിപ്പിക്കുന്ന ചുവന്ന നോട്ടിഫിക്കേഷൻ ഡോട്ട് (Red Badge) മനുഷ്യന്റെ പ്രാകൃതമായ System 1-നെ ഉണർത്തി ചിന്തിക്കുന്ന System 2-നെ ഉറക്കിക്കിടത്തുന്നു. ദിവസം മുഴുവൻ System 1 മാത്രം ഉപയോഗിച്ച് റീൽസ് സ്ക്രോൾ ചെയ്യുന്ന വിദ്യാർത്ഥി പരീക്ഷാ ഹാളിൽ എത്തുമ്പോൾ System 2 മരവിച്ചിരിക്കും. ചോദ്യം മുഴുവൻ വായിക്കാതെ തെറ്റായ ഉത്തരങ്ങൾ എഴുതുന്നത് ഇതുകൊണ്ടാണ്!",
-        deepDescription: "ഡാനിയൽ കാഹ്നെമാന്റെ 'Thinking, Fast and Slow' (2011) എന്ന നൊബേൽ സമ്മാനജേതാവായ ഗവേഷണത്തിലെ System 1 (വേഗതയേറിയ ഓട്ടോപൈലറ്റ് ചിന്ത), System 2 (ആഴത്തിലുള്ള വിശകലന ചിന്ത) എന്നിവയാണ് ബാറ്റ്-ബോൾ ചോദ്യത്തിലൂടെയും സ്ട്രൂപ്പ് ഇഫക്റ്റിലൂടെയും വിദ്യാർത്ഥികൾ സ്വയം അനുഭവിച്ചറിയുന്നത്. സ്മാർട്ട്‌ഫോൺ നോട്ടിഫിക്കേഷനുകൾ System 1-നെ ഉണർത്തി System 2-നെ ദുർബലപ്പെടുത്തുന്നു.",
+        deepDescription: "ഡാനിയൽ കാഹ്നെമാന്റെ (Daniel Kahneman) 'Thinking, Fast and Slow' (2011) എന്ന നൊബേൽ സമ്മാനജേതാവായ ഗവേഷണത്തിലെ System 1 (വേഗതയേറിയ ഓട്ടോപൈലറ്റ് ചിന്ത), System 2 (ആഴത്തിലുള്ള വിശകലന ചിന്ത) എന്നിവയാണ് ബാറ്റ്-ബോൾ ചോദ്യത്തിലൂടെയും സ്ട്രൂപ്പ് ഇഫക്റ്റിലൂടെയും (Stroop Effect) വിദ്യാർത്ഥികൾ സ്വയം അനുഭവിച്ചറിയുന്നത്. സ്മാർട്ട്‌ഫോൺ നോട്ടിഫിക്കേഷനുകൾ System 1-നെ ഉണർത്തി System 2-നെ ദുർബലപ്പെടുത്തുന്നു.",
         links: [
           { label: "Daniel Kahneman — Thinking, Fast and Slow", url: "https://en.wikipedia.org/wiki/Thinking,_Fast_and_Slow", desc: "System 1 vs. System 2 മനഃശാസ്ത്ര സിദ്ധാന്തം" },
           { label: "Stroop Effect Explained", url: "https://en.wikipedia.org/wiki/Stroop_effect", desc: "1935-ലെ ജോൺ റിഡ്‌ലി സ്ട്രൂപ്പ് കോഗ്നിറ്റീവ് പരീക്ഷണം" }
@@ -418,7 +765,7 @@
           }
         ],
         lifeRelation: "1-Hour Study Myth & Death of Boredom: 1 മണിക്കൂർ പഠനത്തിനിടെ 4 തവണ ഫോൺ നോക്കിയാൽ (23 മിനിറ്റ് വീതം ശ്രദ്ധ നഷ്ടപ്പെട്ട്) ആ 1 മണിക്കൂറും വെറുതെയാകുന്നു. പണ്ട് ബോറടിച്ചിരിക്കുമ്പോഴാണ് വലിയ ആശയങ്ങളും കവിതകളും ജനിച്ചിരുന്നത്; ഇന്ന് 5 സെക്കൻഡ് ബോറടിക്കുമ്പോഴേക്കും റീൽസ് തുറന്ന് നമ്മൾ ക്രിയേറ്റിവിറ്റിയെ കൊല്ലുന്നു.",
-        deepDescription: "അറ്റൻഷൻ എക്കണോമി (Attention Economy) എങ്ങനെയാണ് സിലിക്കൺ വാലിയിലെ ടെക് ഭീമന്മാരുടെ വരുമാന മാർഗ്ഗമായി മാറുന്നതെന്ന് ഡാറ്റ സഹിതം ഇവിടെ വ്യക്തമാക്കുന്നു. പ്രൊഫസർ ഗ്ലോറിയ മാർക്കിന്റെ 23 മിനിറ്റ് 15 സെക്കൻഡ് Attention Residue പഠനവും, അസാ റാസ്കിന്റെ Infinite Scroll വെളിപ്പെടുത്തലും, 2020 ജൂൺ 29-ലെ ഇന്ത്യൻ ആപ്പ് നിരോധനവും കൗമാരക്കാരുടെ കണ്ണുതുറപ്പിക്കുന്ന തെളിവുകളാണ്.",
+        deepDescription: "അറ്റൻഷൻ എക്കണോമി (Attention Economy) എങ്ങനെയാണ് സിലിക്കൺ വാലിയിലെ ടെക് ഭീമന്മാരുടെ വരുമാന മാർഗ്ഗമായി മാറുന്നതെന്ന് ഡാറ്റ സഹിതം ഇവിടെ വ്യക്തമാക്കുന്നു. പ്രൊഫസർ ഗ്ലോറിയ മാർക്കിന്റെ 23 മിനിറ്റ് 15 സെക്കൻഡ് Attention Residue പഠനവും, അസാ റാസ്കിന്റെ (Aza Raskin) Infinite Scroll വെളിപ്പെടുത്തലും, 2020 ജൂൺ 29-ലെ ഇന്ത്യൻ ആപ്പ് നിരോധനവും കൗമാരക്കാരുടെ കണ്ണുതുറപ്പിക്കുന്ന തെളിവുകളാണ്.",
         links: [
           { label: "Pew Research — Teens & Internet", url: "https://www.pewresearch.org/internet/", desc: "കൗമാരക്കാരുടെ ഇന്റർനെറ്റ്, YouTube ഉപയോഗ സർവേകൾ" },
           { label: "CDC — Screen Time & Teen Health", url: "https://www.cdc.gov/nchs/", desc: "4+ മണിക്കൂർ സ്ക്രീൻ ഉപയോഗവും മാനസികാരോഗ്യവും" },
@@ -446,7 +793,7 @@
           }
         ],
         lifeRelation: "ഉറക്കം നഷ്ടപ്പെടുത്തി പഠിക്കുന്നത് വെള്ളത്തിൽ വരയ്ക്കുന്ന വര പോലെയാണ്; തലച്ചോറിലെ മെമ്മറി ഫയലുകൾ സേവ് ചെയ്യപ്പെടുന്നത് രാത്രിയിലെ ആഴത്തിലുള്ള ഉറക്കത്തിലാണ്.",
-        deepDescription: "ഡോ. കെന്നത്ത് ഹാൻസ്‌രാജിന്റെ നട്ടെല്ല് ഭാര പഠനം (0° = 5kg മുതൽ 60° = 27kg വരെ), അമേരിക്കൻ അക്കാദമി ഓഫ് ഒഫ്താൽമോളജിയുടെ 20-20-20 നേത്ര സംരക്ഷണ നിയമം, നീല വെളിച്ചം (Blue Light) മെലറ്റോണിൻ ഹോർമോണിനെ തടഞ്ഞ് ഓർമ്മശക്തിയെ ബാധിക്കുന്ന വിധം എന്നിവ ലളിതമായി അവതരിപ്പിക്കുന്നു.",
+        deepDescription: "ഡോ. കെന്നത്ത് ഹാൻസ്‌രാജിന്റെ നട്ടെല്ല് ഭാര പഠനം (0° = 5kg മുതൽ 60° = 27kg വരെ), അമേരിക്കൻ അക്കാദമി ഓഫ് ഒഫ്താൽമോളജിയുടെ 20-20-20 നേത്ര സംരക്ഷണ നിയമം, നീല വെളിച്ചം (Blue Light) മെലറ്റോണിൻ (Melatonin) ഹോർമോണിനെ തടഞ്ഞ് ഓർമ്മശക്തിയെ ബാധിക്കുന്ന വിധം എന്നിവ ലളിതമായി അവതരിപ്പിക്കുന്നു.",
         links: [
           { label: "AAO — 20-20-20 Rule for Eye Strain", url: "https://www.aao.org/eye-health/tips-prevention/computer-usage", desc: "കണ്ണുകളുടെ ക്ഷീണം അകറ്റാൻ ഔദ്യോഗിക മാർഗ്ഗനിർദ്ദേശം" },
           { label: "Text Neck Syndrome Research (PubMed)", url: "https://pubmed.ncbi.nlm.nih.gov/25393825/", desc: "തല താഴ്ത്തുമ്പോൾ കഴുത്തിലുണ്ടാകുന്ന 27 kg ഭാരം (Dr. Hansraj Study)" }
@@ -500,7 +847,7 @@
           }
         ],
         lifeRelation: "രാത്രി അപരിചിതൻ വാതിലിൽ മുട്ടിയാൽ നമ്മൾ തുറക്കാറില്ല; എന്നാൽ സോഷ്യൽ മീഡിയയിൽ അപരിചിതരുടെ റിക്വസ്റ്റുകൾ സ്വീകരിച്ച് സ്വകാര്യ ചിത്രങ്ങൾ പങ്കുവെക്കുന്നത് വീടിന്റെ വാതിൽ മലർക്കെ തുറന്നിടുന്നതിന് തുല്യമാണ്.",
-        deepDescription: "വ്യാജ ഗെയിം സ്കിൻ ഫിഷിംഗ് ലിങ്കുകൾ, Task Scams, ബാങ്ക് അക്കൗണ്ട് വഴിയുള്ള Money Mule കുറ്റകൃത്യങ്ങൾ, ഫോട്ടോകളിലെ GPS EXIF ഡാറ്റ ചോർച്ച, AI Deepfake ഭീഷണികൾ എന്നിവയിൽ നിന്ന് രക്ഷപ്പെടാനുള്ള കൃത്യമായ സൈബർ സുരക്ഷാ പാഠമാണിത്. Golden Hour-ൽ 1930 / 1098 വിളിക്കേണ്ട പ്രാധാന്യം നിർബന്ധമായും ഊന്നിപ്പറയുക.",
+        deepDescription: "വ്യാജ ഗെയിം സ്കിൻ ഫിഷിംഗ് (Phishing) ലിങ്കുകൾ, Task Scams, ബാങ്ക് അക്കൗണ്ട് വഴിയുള്ള Money Mule കുറ്റകൃത്യങ്ങൾ, ഫോട്ടോകളിലെ GPS EXIF Data ചോർച്ച, AI Deepfake ഭീഷണികൾ എന്നിവയിൽ നിന്ന് രക്ഷപ്പെടാനുള്ള കൃത്യമായ സൈബർ സുരക്ഷാ പാഠമാണിത്. Golden Hour-ൽ 1930 / 1098 വിളിക്കേണ്ട പ്രാധാന്യം നിർബന്ധമായും ഊന്നിപ്പറയുക.",
         links: [
           { label: "National Cyber Crime Reporting Portal (1930)", url: "https://cybercrime.gov.in/", desc: "സാമ്പത്തിക സൈബർ തട്ടിപ്പുകളും ഓൺലൈൻ കുറ്റകൃത്യങ്ങളും റിപ്പോർട്ട് ചെയ്യാൻ" },
           { label: "CHILDLINE 1098 (India)", url: "https://childlineindia.org/", desc: "കുട്ടികൾക്കും കൗമാരക്കാർക്കുമുള്ള 24x7 എമർജൻസി സഹായ പോർട്ടൽ" },
@@ -582,7 +929,7 @@
           }
         ],
         lifeRelation: "Consumer vs. Creator: റീൽസ് കണ്ട് 2 മണിക്കൂർ കളയുമ്പോൾ നിങ്ങൾ വെറുമൊരു ഉപഭോക്താവ് മാത്രമാണ്; എന്നാൽ അതേ സമയം കൊണ്ട് NPTEL കോഴ്സോ ഒരു പ്രോജക്റ്റോ ചെയ്യുമ്പോൾ നിങ്ങൾ ഭാവിയിലെ നേതാവായി മാറുന്നു.",
-        deepDescription: "പ്ലസ് വൺ, പ്ലസ് ടു വിദ്യാർത്ഥികൾക്ക് സൗജന്യമായി ഉപയോഗിക്കാവുന്ന ഇന്ത്യയുടെ മികച്ച സർക്കാർ-അന്താരാഷ്ട്ര വിദ്യാഭ്യാസ പോർട്ടലുകളും, വെറും മാർക്കിനപ്പുറം 'Proof-of-Work' പോർട്ട്‌ഫോളിയോയും 4 മനുഷ്യ സൂപ്പർ പവറുകളും വളർത്തേണ്ടതിന്റെ ആവശ്യകതയും അവതരിപ്പിക്കുന്നു.",
+        deepDescription: "പ്ലസ് വൺ, പ്ലസ് ടു വിദ്യാർത്ഥികൾക്ക് സൗജന്യമായി ഉപയോഗിക്കാവുന്ന ഇന്ത്യയുടെ മികച്ച സർക്കാർ-അന്താരാഷ്ട്ര വിദ്യാഭ്യാസ പോർട്ടലുകളും (SWAYAM, NPTEL, DIKSHA, Coursera), വെറും മാർക്കിനപ്പുറം 'Proof-of-Work' Portfolio-യും 4 മനുഷ്യ സൂപ്പർ പവറുകളും വളർത്തേണ്ടതിന്റെ ആവശ്യകതയും അവതരിപ്പിക്കുന്നു.",
         links: [
           { label: "SWAYAM (Govt. of India)", url: "https://swayam.gov.in/", desc: "സൗജന്യ ഓൺലൈൻ കോഴ്സുകൾ (Class 9 മുതൽ PG വരെ)" },
           { label: "NPTEL (IITs & IISc)", url: "https://nptel.ac.in/", desc: "IIT / IISc പ്രൊഫസർമാരുടെ സൗജന്യ വീഡിയോ ക്ലാസുകളും സർട്ടിഫിക്കറ്റുകളും" },
@@ -613,7 +960,7 @@
           }
         ],
         lifeRelation: "Environment Design over Willpower: ആത്മനിയന്ത്രണം എന്നത് ഒരു ബാറ്ററി പോലെയാണ്—വൈകുന്നേരമാകുമ്പോഴേക്കും അത് തീരും. ഫോൺ കൺമുന്നിൽ വെച്ച് വാശി പിടിക്കുന്നതിനേക്കാൾ ബുദ്ധി ഫോൺ മറ്റൊരു മുറിയിൽ വെച്ച് ചുറ്റുപാട് മാറ്റുന്നതാണ്.",
-        deepDescription: "മനഃശക്തി (Willpower) കൊണ്ട് മാത്രം സ്ക്രീൻ അഡിക്ഷൻ തോൽപ്പിക്കാനാവില്ല; ഫോണിന്റെ ചുറ്റുപാടും (Environment Design) സെറ്റിംഗ്സും മാറ്റണം. Grayscale മോഡ്, UT Austin-ന്റെ 2-മീറ്റർ അകലം നിയമം, 3-Window Batching എന്നിവയിലൂടെ സ്ക്രീൻ ടൈം പകുതിയായി കുറയ്ക്കാനുള്ള പ്രായോഗിക മാർഗ്ഗങ്ങൾ പഠിപ്പിക്കുന്നു.",
+        deepDescription: "മനഃശക്തി (Willpower) കൊണ്ട് മാത്രം സ്ക്രീൻ അഡിക്ഷൻ തോൽപ്പിക്കാനാവില്ല; ഫോണിന്റെ ചുറ്റുപാടും (Environment Design) സെറ്റിംഗ്സും മാറ്റണം. Grayscale മോഡ്, UT Austin-ന്റെ 2-മീറ്റർ അകലം നിയമം (Cognitive Capacity), 3-Window Batching എന്നിവയിലൂടെ സ്ക്രീൻ ടൈം പകുതിയായി കുറയ്ക്കാനുള്ള പ്രായോഗിക മാർഗ്ഗങ്ങൾ പഠിപ്പിക്കുന്നു.",
         links: [
           { label: "UT Austin — 'Brain Drain' Phone Study", url: "https://www.journals.uchicago.edu/doi/10.1086/691462", desc: "ഫോൺ അടുത്ത് വെച്ചാൽ Cognitive Capacity കുറയുന്നു എന്ന പഠനം" },
           { label: "Google Digital Wellbeing", url: "https://wellbeing.google/", desc: "Focus Mode, App Timers, Grayscale ടൂളുകൾ" }
@@ -658,9 +1005,15 @@
     const STORAGE_KEY_FONT = 's2s_teleprompter_font_v1';
 
     let completedSegments = new Set(JSON.parse(localStorage.getItem(STORAGE_KEY_DONE) || '[]'));
-    let activeSegmentIndex = 0; // Active segment for Single-Page Split Mode & bottom indicator
+    let activeSegmentIndex = 0;
     let isSingleFocusMode = true; // Default: whole section in single page
     let searchQuery = '';
+
+    // Auto-Hide State & Timers
+    let autoHideHeader = false;
+    let autoHideFooter = false;
+    let headerHideTimer = null;
+    let footerHideTimer = null;
 
     // Timer State (45 minutes = 2700 seconds)
     const TOTAL_SESSION_SECONDS = 45 * 60;
@@ -672,142 +1025,6 @@
     // Wake Lock State
     let wakeLockSentinel = null;
 
-    // ==================== AUTO-HIDE HEADER & FOOTER (MOUSE + TOUCH) ====================
-    let headerHideTimeout = null;
-    let footerHideTimeout = null;
-    let isHeaderVisible = false;
-    let isFooterVisible = false;
-
-    function showHeader(autoHideAfterMs = 0) {
-      const header = document.getElementById('stageHeader');
-      clearTimeout(headerHideTimeout);
-      if (!isHeaderVisible) {
-        header.classList.remove('-translate-y-full', 'opacity-0', 'pointer-events-none');
-        header.classList.add('translate-y-0', 'opacity-100', 'pointer-events-auto');
-        isHeaderVisible = true;
-      }
-      if (autoHideAfterMs > 0) {
-        headerHideTimeout = setTimeout(() => hideHeader(), autoHideAfterMs);
-      }
-    }
-
-    function hideHeader() {
-      const header = document.getElementById('stageHeader');
-      // Keep open while typing in search or using slide dropdown
-      if (header.contains(document.activeElement) && ['INPUT', 'SELECT'].includes(document.activeElement.tagName)) {
-        return;
-      }
-      header.classList.add('-translate-y-full', 'opacity-0', 'pointer-events-none');
-      header.classList.remove('translate-y-0', 'opacity-100', 'pointer-events-auto');
-      isHeaderVisible = false;
-    }
-
-    function scheduleHideHeader(delay = 350) {
-      clearTimeout(headerHideTimeout);
-      headerHideTimeout = setTimeout(() => hideHeader(), delay);
-    }
-
-    function showFooter(autoHideAfterMs = 0) {
-      const footer = document.getElementById('stageFooter');
-      clearTimeout(footerHideTimeout);
-      if (!isFooterVisible) {
-        footer.classList.remove('translate-y-full', 'opacity-0', 'pointer-events-none');
-        footer.classList.add('translate-y-0', 'opacity-100', 'pointer-events-auto');
-        isFooterVisible = true;
-      }
-      if (autoHideAfterMs > 0) {
-        footerHideTimeout = setTimeout(() => hideFooter(), autoHideAfterMs);
-      }
-    }
-
-    function hideFooter() {
-      const footer = document.getElementById('stageFooter');
-      footer.classList.add('translate-y-full', 'opacity-0', 'pointer-events-none');
-      footer.classList.remove('translate-y-0', 'opacity-100', 'pointer-events-auto');
-      isFooterVisible = false;
-    }
-
-    function scheduleHideFooter(delay = 350) {
-      clearTimeout(footerHideTimeout);
-      footerHideTimeout = setTimeout(() => hideFooter(), delay);
-    }
-
-    function initAutoHideControls() {
-      const header = document.getElementById('stageHeader');
-      const footer = document.getElementById('stageFooter');
-      const topHotzone = document.getElementById('topHotzone');
-      const bottomHotzone = document.getElementById('bottomHotzone');
-
-      // Mouse edge detection anywhere on screen
-      document.addEventListener('mousemove', (e) => {
-        if (e.clientY <= 45) {
-          showHeader();
-        } else if (isHeaderVisible && !header.contains(e.target)) {
-          scheduleHideHeader(350);
-        }
-
-        if (window.innerHeight - e.clientY <= 45) {
-          showFooter();
-        } else if (isFooterVisible && !footer.contains(e.target)) {
-          scheduleHideFooter(350);
-        }
-      }, { passive: true });
-
-      // Keep bars visible while mouse hovers inside them
-      header.addEventListener('mouseenter', () => { clearTimeout(headerHideTimeout); showHeader(); });
-      header.addEventListener('mouseleave', () => scheduleHideHeader(350));
-      header.addEventListener('focusout', () => {
-        setTimeout(() => {
-          if (!header.matches(':hover') && !header.contains(document.activeElement)) {
-            scheduleHideHeader(350);
-          }
-        }, 100);
-      });
-
-      footer.addEventListener('mouseenter', () => { clearTimeout(footerHideTimeout); showFooter(); });
-      footer.addEventListener('mouseleave', () => scheduleHideFooter(350));
-
-      // Hotzone mouse & touch triggers
-      topHotzone.addEventListener('mouseenter', () => showHeader());
-      topHotzone.addEventListener('click', (e) => { e.stopPropagation(); showHeader(5000); });
-      topHotzone.addEventListener('touchstart', (e) => { e.stopPropagation(); showHeader(5000); }, { passive: true });
-
-      bottomHotzone.addEventListener('mouseenter', () => showFooter());
-      bottomHotzone.addEventListener('click', (e) => { e.stopPropagation(); showFooter(5000); });
-      bottomHotzone.addEventListener('touchstart', (e) => { e.stopPropagation(); showFooter(5000); }, { passive: true });
-
-      // Touch anywhere near top/bottom edge + keep open while touching controls
-      document.addEventListener('touchstart', (e) => {
-        if (!e.touches || !e.touches.length) return;
-        const touchY = e.touches[0].clientY;
-
-        if (header.contains(e.target)) {
-          showHeader(5000);
-          return;
-        }
-        if (footer.contains(e.target)) {
-          showFooter(5000);
-          return;
-        }
-
-        if (touchY <= 55) {
-          showHeader(5000);
-        } else if (window.innerHeight - touchY <= 55) {
-          showFooter(5000);
-        }
-      }, { passive: true });
-
-      // Tap middle content area to hide open bars cleanly
-      document.addEventListener('click', (e) => {
-        if (isHeaderVisible && !header.contains(e.target) && !topHotzone.contains(e.target)) {
-          hideHeader();
-        }
-        if (isFooterVisible && !footer.contains(e.target) && !bottomHotzone.contains(e.target)) {
-          hideFooter();
-        }
-      });
-    }
-
     // ==================== INITIALIZATION ====================
     function initApp() {
       populateSlideJumpDropdown();
@@ -815,7 +1032,7 @@
       renderSegments();
       updateProgressUI();
       updateBottomBar();
-      initAutoHideControls();
+      syncFullscreenButton();
 
       const savedFont = localStorage.getItem(STORAGE_KEY_FONT) || 'md';
       setFontScale(savedFont);
@@ -857,6 +1074,166 @@
         select.appendChild(opt);
       });
     }
+
+    // ==================== AUTO-HIDE HEADER & FOOTER CONTROLS ====================
+    function toggleAutoHideHeader() {
+      autoHideHeader = !autoHideHeader;
+      const btn = document.getElementById('autoHideHeaderBtn');
+      const header = document.getElementById('stageHeader');
+
+      if (autoHideHeader) {
+        document.body.classList.add('header-autohide');
+        header.classList.remove('reveal-bar');
+        btn.textContent = '📌 Pin Top';
+        btn.classList.remove('bg-slate-100', 'text-slate-700', 'border-slate-200');
+        btn.classList.add('bg-blue-50', 'text-blue-700', 'border-blue-300');
+        showToast('Header Hidden — Touch or hover top edge to show');
+      } else {
+        clearTimeout(headerHideTimer);
+        document.body.classList.remove('header-autohide');
+        header.classList.remove('reveal-bar');
+        btn.textContent = '⬆ Hide Top';
+        btn.classList.add('bg-slate-100', 'text-slate-700', 'border-slate-200');
+        btn.classList.remove('bg-blue-50', 'text-blue-700', 'border-blue-300');
+        showToast('Header Pinned Visible');
+      }
+    }
+
+    function revealHeader() {
+      if (!autoHideHeader) return;
+      clearTimeout(headerHideTimer);
+      document.getElementById('stageHeader').classList.add('reveal-bar');
+    }
+
+    function keepHeaderOpen() {
+      if (!autoHideHeader) return;
+      clearTimeout(headerHideTimer);
+    }
+
+    function scheduleHideHeader() {
+      if (!autoHideHeader) return;
+      clearTimeout(headerHideTimer);
+      const activeEl = document.activeElement;
+      if (activeEl && document.getElementById('stageHeader').contains(activeEl) &&
+          (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT')) {
+        return;
+      }
+      headerHideTimer = setTimeout(() => {
+        document.getElementById('stageHeader').classList.remove('reveal-bar');
+      }, 350);
+    }
+
+    function toggleAutoHideFooter() {
+      autoHideFooter = !autoHideFooter;
+      const btn = document.getElementById('autoHideFooterBtn');
+      const selfBtn = document.getElementById('footerSelfToggleBtn');
+      const footer = document.getElementById('stageFooter');
+
+      if (autoHideFooter) {
+        document.body.classList.add('footer-autohide');
+        footer.classList.remove('reveal-bar');
+        btn.textContent = '📌 Pin Nav';
+        btn.classList.remove('bg-slate-100', 'text-slate-700', 'border-slate-200');
+        btn.classList.add('bg-blue-50', 'text-blue-700', 'border-blue-300');
+        if (selfBtn) {
+          selfBtn.textContent = '📌 Pin Nav';
+          selfBtn.classList.add('bg-blue-50', 'text-blue-700', 'border-blue-300');
+        }
+        showToast('Prev/Next Bar Hidden — Touch or hover bottom edge to show');
+      } else {
+        clearTimeout(footerHideTimer);
+        document.body.classList.remove('footer-autohide');
+        footer.classList.remove('reveal-bar');
+        btn.textContent = '⬇ Hide Nav';
+        btn.classList.add('bg-slate-100', 'text-slate-700', 'border-slate-200');
+        btn.classList.remove('bg-blue-50', 'text-blue-700', 'border-blue-300');
+        if (selfBtn) {
+          selfBtn.textContent = '⬇ Auto-Hide';
+          selfBtn.classList.remove('bg-blue-50', 'text-blue-700', 'border-blue-300');
+        }
+        showToast('Prev/Next Bar Pinned Visible');
+      }
+    }
+
+    function revealFooter() {
+      if (!autoHideFooter) return;
+      clearTimeout(footerHideTimer);
+      document.getElementById('stageFooter').classList.add('reveal-bar');
+    }
+
+    function keepFooterOpen() {
+      if (!autoHideFooter) return;
+      clearTimeout(footerHideTimer);
+    }
+
+    function scheduleHideFooter() {
+      if (!autoHideFooter) return;
+      clearTimeout(footerHideTimer);
+      footerHideTimer = setTimeout(() => {
+        document.getElementById('stageFooter').classList.remove('reveal-bar');
+      }, 350);
+    }
+
+    function dismissRevealedBarsOnTap() {
+      if (autoHideHeader) {
+        document.getElementById('stageHeader').classList.remove('reveal-bar');
+      }
+      if (autoHideFooter) {
+        document.getElementById('stageFooter').classList.remove('reveal-bar');
+      }
+    }
+
+    window.addEventListener('mousemove', (e) => {
+      if (autoHideHeader && e.clientY <= 18) {
+        revealHeader();
+      }
+      if (autoHideFooter && e.clientY >= window.innerHeight - 18) {
+        revealFooter();
+      }
+    }, { passive: true });
+
+    // ==================== FULL SCREEN TOGGLE ====================
+    async function toggleFullScreen() {
+      const docEl = document.documentElement;
+      const isFull = !!(document.fullscreenElement || document.webkitFullscreenElement);
+
+      try {
+        if (!isFull) {
+          if (docEl.requestFullscreen) {
+            await docEl.requestFullscreen();
+          } else if (docEl.webkitRequestFullscreen) {
+            await docEl.webkitRequestFullscreen();
+          } else {
+            showToast('Full Screen not supported on this browser.');
+          }
+        } else {
+          if (document.exitFullscreen) {
+            await document.exitFullscreen();
+          } else if (document.webkitExitFullscreen) {
+            await document.webkitExitFullscreen();
+          }
+        }
+      } catch (err) {
+        showToast('Could not toggle Full Screen mode.');
+      }
+    }
+
+    function syncFullscreenButton() {
+      const btn = document.getElementById('fullscreenBtn');
+      const isFull = !!(document.fullscreenElement || document.webkitFullscreenElement);
+      if (isFull) {
+        btn.textContent = '🗗 Exit Full';
+        btn.classList.remove('bg-slate-900', 'hover:bg-slate-800');
+        btn.classList.add('bg-emerald-600', 'hover:bg-emerald-700');
+      } else {
+        btn.textContent = '⛶ Fullscreen';
+        btn.classList.add('bg-slate-900', 'hover:bg-slate-800');
+        btn.classList.remove('bg-emerald-600', 'hover:bg-emerald-700');
+      }
+    }
+
+    document.addEventListener('fullscreenchange', syncFullscreenButton);
+    document.addEventListener('webkitfullscreenchange', syncFullscreenButton);
 
     // ==================== RENDER SEGMENT PILLS ====================
     function renderSegmentPills() {
@@ -905,10 +1282,14 @@
           updateBottomBar();
           const targetEl = document.getElementById(MASTER_SEGMENTS[idx].id);
           if (targetEl) {
-            const top = targetEl.getBoundingClientRect().top + window.scrollY - 20;
-            window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+            const headerOffset = autoHideHeader ? 16 : 122;
+            const elementPosition = targetEl.getBoundingClientRect().top + window.scrollY;
+            window.scrollTo({ top: elementPosition - headerOffset, behavior: 'smooth' });
           }
         }
+      }
+      if (autoHideHeader) {
+        document.getElementById('stageHeader').classList.remove('reveal-bar');
       }
     }
 
@@ -934,7 +1315,8 @@
           } else {
             const el = document.getElementById(MASTER_SEGMENTS[segIdx].id);
             if (el) {
-              const top = el.getBoundingClientRect().top + window.scrollY - 20;
+              const headerOffset = autoHideHeader ? 16 : 122;
+              const top = el.getBoundingClientRect().top + window.scrollY - headerOffset;
               window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
             }
           }
@@ -942,19 +1324,58 @@
         showToast(`Jumped to Slide ${slideNum} (${MASTER_SEGMENTS[segIdx].badge})`);
       }
       document.getElementById('slideJumpSelect').value = '';
+      if (autoHideHeader) {
+        document.getElementById('stageHeader').classList.remove('reveal-bar');
+      }
     }
 
-    // ==================== RENDER DETAILED 2-COLUMN SPLIT SEGMENT CARDS ====================
-    function highlightText(rawText) {
-      const escaped = String(rawText)
+    // ==================== TEXT FORMATTING: SEARCH HIGHLIGHT + INLINE VOICE-OVER ====================
+    function escapeHtml(rawText) {
+      return String(rawText)
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
-      if (!searchQuery) return escaped;
-      const safeRegex = new RegExp(`(${searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-      return escaped.replace(safeRegex, '<mark class="search-hl">$1</mark>');
     }
 
+    function applySearchHighlight(escapedText) {
+      if (!searchQuery) return escapedText;
+      const safeRegex = new RegExp(`(${searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+      return escapedText.replace(safeRegex, '<mark class="search-hl">$1</mark>');
+    }
+
+    // Plain highlight (used inside <a> tags where nested <button> is invalid)
+    function highlightText(rawText) {
+      return applySearchHighlight(escapeHtml(rawText));
+    }
+
+    // Full teleprompter formatter: attaches clickable 🔊 voice-over ONLY to complicated words
+    function formatWithPronunciation(rawText) {
+      const escaped = escapeHtml(rawText);
+      const tokens = [];
+
+      const tokenized = escaped.replace(PRON_REGEX, (match, prefix, matchedTerm) => {
+        const lowerKey = matchedTerm.toLowerCase();
+        const entry = PRON_LOOKUP[lowerKey];
+        if (!entry) return match;
+        const idx = tokens.length;
+        tokens.push({ matchedTerm, lowerKey, entry });
+        return `${prefix}%%PRON_TOK_${idx}%%`;
+      });
+
+      let html = applySearchHighlight(tokenized);
+
+      html = html.replace(/%%PRON_TOK_(\d+)%%/g, (_, idxStr) => {
+        const { matchedTerm, lowerKey, entry } = tokens[parseInt(idxStr, 10)];
+        const safeKey = lowerKey.replace(/'/g, "\\'");
+        const safeTitle = `🔊 Hear pronunciation: ${entry.phonetic} (${entry.mlHint})`.replace(/"/g, '&quot;');
+        const labelHtml = applySearchHighlight(matchedTerm);
+        return `<button type="button" class="pron-word" onclick="event.stopPropagation(); speakWord('${safeKey}', this)" title="${safeTitle}" aria-label="Pronounce ${matchedTerm}">${labelHtml}<span class="pron-icon" aria-hidden="true">🔊</span></button>`;
+      });
+
+      return html;
+    }
+
+    // ==================== RENDER DETAILED 2-COLUMN SPLIT SEGMENT CARDS ====================
     function renderSegments() {
       const container = document.getElementById('segmentsContainer');
 
@@ -1000,7 +1421,7 @@
                 const isInternal = link.url.startsWith('#');
                 return `
                   <a href="${link.url}"
-                     ${isInternal ? `onclick="event.preventDefault(); selectSegmentTab(MASTER_SEGMENTS.findIndex(s => s.id === '${link.url.slice(1)}'))"` : 'target="_blank" rel="noopener noreferrer"'}
+                     ${isInternal ? `onclick="event.preventDefault(); event.stopPropagation(); selectSegmentTab(MASTER_SEGMENTS.findIndex(s => s.id === '${link.url.slice(1)}'))"` : 'onclick="event.stopPropagation()" target="_blank" rel="noopener noreferrer"'}
                      class="group block rounded-xl bg-white hover:bg-sky-50 border border-sky-200 hover:border-sky-400 p-2.5 transition">
                     <div class="flex items-center justify-between gap-2">
                       <span class="text-xs sm:text-sm font-extrabold text-blue-700 group-hover:underline">${highlightText(link.label)}</span>
@@ -1024,7 +1445,7 @@
                 <span class="px-3 py-1 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-extrabold">🎞️ ${seg.slideLabel}</span>
               </div>
 
-              <label class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl border cursor-pointer select-none transition ${isDone ? 'bg-emerald-600 border-emerald-600 text-white font-bold' : 'bg-slate-50 hover:bg-slate-100 border-slate-300 text-slate-800 font-bold'}">
+              <label onclick="event.stopPropagation()" class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl border cursor-pointer select-none transition ${isDone ? 'bg-emerald-600 border-emerald-600 text-white font-bold' : 'bg-slate-50 hover:bg-slate-100 border-slate-300 text-slate-800 font-bold'}">
                 <input type="checkbox" ${isDone ? 'checked' : ''} onchange="toggleSegmentDone('${seg.id}', ${originalIndex})" class="w-4 h-4 accent-emerald-600 rounded cursor-pointer" />
                 <span class="text-xs sm:text-sm">${isDone ? 'Completed ✓' : 'Mark Done'}</span>
               </label>
@@ -1037,15 +1458,15 @@
               <div class="split-pane space-y-4 lg:pr-2">
                 <div>
                   <h2 class="font-ml text-xl sm:text-2xl font-black text-slate-900 leading-snug mb-2">
-                    ${highlightText(seg.title)}
+                    ${formatWithPronunciation(seg.title)}
                   </h2>
                   <p class="font-ml teleprompter-meta text-slate-700 mb-3">
-                    <strong class="text-slate-900">🎯 ലക്ഷ്യം (Objective):</strong> ${highlightText(seg.objective)}
+                    <strong class="text-slate-900">🎯 ലക്ഷ്യം (Objective):</strong> ${formatWithPronunciation(seg.objective)}
                   </p>
                   ${seg.deepDescription ? `
                     <div class="rounded-2xl bg-slate-50 border border-slate-200 p-3.5">
                       <div class="text-xs font-black uppercase tracking-wider text-slate-700 mb-1">📘 Extended Description &amp; Context</div>
-                      <p class="font-ml teleprompter-meta text-slate-700">${highlightText(seg.deepDescription)}</p>
+                      <p class="font-ml teleprompter-meta text-slate-700">${formatWithPronunciation(seg.deepDescription)}</p>
                     </div>
                   ` : ''}
                 </div>
@@ -1054,7 +1475,7 @@
                 <div class="rounded-2xl bg-slate-50 border border-slate-200 p-3.5">
                   <div class="text-xs font-black uppercase tracking-wider text-indigo-700 mb-1.5">🖥️ Projector Slide Cue (${seg.slideLabel})</div>
                   <ul class="space-y-1.5 font-ml text-xs sm:text-sm text-slate-700">
-                    ${seg.slideVisuals.map(v => `<li class="flex items-start gap-2"><span class="text-indigo-600 font-bold">▪</span><span>${highlightText(v)}</span></li>`).join('')}
+                    ${seg.slideVisuals.map(v => `<li class="flex items-start gap-2"><span class="text-indigo-600 font-bold">▪</span><span>${formatWithPronunciation(v)}</span></li>`).join('')}
                   </ul>
                 </div>
 
@@ -1062,7 +1483,7 @@
                 <div class="rounded-2xl bg-amber-50/80 border border-amber-200 p-3.5">
                   <div class="text-xs font-black uppercase tracking-wider text-amber-800 mb-1">🎬 Stage Action &amp; Delivery Cue</div>
                   <p class="font-ml teleprompter-meta text-amber-950 font-medium">
-                    ${highlightText(seg.stageAction)}
+                    ${formatWithPronunciation(seg.stageAction)}
                   </p>
                 </div>
 
@@ -1070,7 +1491,7 @@
                 <div class="rounded-2xl bg-emerald-50/70 border border-emerald-200 p-3.5">
                   <div class="text-xs font-black uppercase tracking-wider text-emerald-800 mb-1">💡 Deep Life Relation &amp; Psychology Insight</div>
                   <p class="font-ml teleprompter-meta text-emerald-950">
-                    ${highlightText(seg.lifeRelation)}
+                    ${formatWithPronunciation(seg.lifeRelation)}
                   </p>
                 </div>
 
@@ -1088,11 +1509,11 @@
                 ${seg.scriptBlocks.map(block => `
                   <div class="rounded-2xl bg-white border-l-4 border-l-blue-600 border border-slate-200 p-4 sm:p-5 shadow-xs">
                     <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
-                      <span class="font-ml text-xs sm:text-sm font-extrabold text-blue-700">${highlightText(block.cue)}</span>
-                      ${block.note ? `<span class="font-ml text-xs italic text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-lg">(${highlightText(block.note)})</span>` : ''}
+                      <span class="font-ml text-xs sm:text-sm font-extrabold text-blue-700">${formatWithPronunciation(block.cue)}</span>
+                      ${block.note ? `<span class="font-ml text-xs italic text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-lg">(${formatWithPronunciation(block.note)})</span>` : ''}
                     </div>
                     <div class="font-ml teleprompter-script text-slate-900 font-medium whitespace-pre-line">
-                      ${highlightText(block.text)}
+                      ${formatWithPronunciation(block.text)}
                     </div>
                   </div>
                 `).join('')}
@@ -1119,7 +1540,8 @@
           updateBottomBar();
           const el = document.getElementById(MASTER_SEGMENTS[activeSegmentIndex].id);
           if (el) {
-            const top = el.getBoundingClientRect().top + window.scrollY - 20;
+            const headerOffset = autoHideHeader ? 16 : 122;
+            const top = el.getBoundingClientRect().top + window.scrollY - headerOffset;
             window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
           }
         }
@@ -1139,7 +1561,6 @@
         completedSegments.delete(segId);
       } else {
         completedSegments.add(segId);
-        // Auto-advance active segment pointer if in single focus mode
         if (isSingleFocusMode && idx < MASTER_SEGMENTS.length - 1) {
           activeSegmentIndex = idx + 1;
           window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1308,12 +1729,12 @@
 
     // ==================== TOAST HELPER ====================
     let toastTimeout = null;
-    function showToast(msg) {
+    function showToast(msg, durationMs = 3000) {
       const el = document.getElementById('toastBanner');
       el.textContent = msg;
       el.classList.remove('hidden');
       clearTimeout(toastTimeout);
-      toastTimeout = setTimeout(() => el.classList.add('hidden'), 3000);
+      toastTimeout = setTimeout(() => el.classList.add('hidden'), durationMs);
     }
 
     // Start App
