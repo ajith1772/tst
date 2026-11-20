@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="ml">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+  <title>SCREEN TO SEEN — Tablet Speaker Teleprompter &amp; Stage Companion</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+Malayalam:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', '"Inter"', '"Noto Sans Malayalam"', 'sans-serif'],
+            ml: ['"Noto Sans Malayalam"', '"Plus Jakarta Sans"', 'sans-serif'],
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background-color: #ffffff;
+      color: #0f172a;
+      font-family: 'Plus Jakarta Sans', 'Inter', 'Noto Sans Malayalam', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      scroll-behavior: smooth;
+    }
+
+    /* Hide scrollbar for clean horizontal tablet pill bar */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    /* Dynamic Font Size Scale Classes for Arm's-Length Tablet Reading */
+    body.font-scale-sm { --script-size: 1rem; --script-lh: 1.7; --meta-size: 0.875rem; }
+    body.font-scale-md { --script-size: 1.18rem; --script-lh: 1.82; --meta-size: 0.95rem; }
+    body.font-scale-lg { --script-size: 1.38rem; --script-lh: 1.9; --meta-size: 1.05rem; }
+    body.font-scale-xl { --script-size: 1.62rem; --script-lh: 1.95; --meta-size: 1.15rem; }
+
+    .teleprompter-script {
+      font-size: var(--script-size, 1.18rem);
+      line-height: var(--script-lh, 1.82);
+    }
+    .teleprompter-meta {
+      font-size: var(--meta-size, 0.95rem);
+      line-height: 1.65;
+    }
+
+    /* Subtle Minimalist Card & Elevation */
+    .studio-card {
+      background-color: #ffffff;
+      border: 1.5px solid #e2e8f0;
+      box-shadow: 0 2px 12px rgba(15, 23, 42, 0.03);
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, opacity 0.25s ease;
+    }
+    .studio-card.completed-seg {
+      border-color: #a7f3d0;
+      background-color: #f8fafc;
+    }
+
+    /* Highlight search matches */
+    mark.search-hl {
+      background-color: #fef08a;
+      color: #0f172a;
+      padding: 0 3px;
+      border-radius: 4px;
+      font-weight: 700;
+    }
+
+    @media print {
+      .no-print { display: none !important; }
+      body { background: #ffffff !important; }
+      .studio-card { break-inside: avoid; border: 1px solid #cbd5e1; box-shadow: none; }
+    }
+  </style>
+</head>
+<body class="font-scale-md bg-white text-slate-900 min-h-screen flex flex-col">
+
+  <!-- ==================== STICKY TOP STAGE CONTROL BAR ==================== -->
+  <header class="no-print sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm">
+    <!-- Top Progress Line -->
+    <div class="w-full h-1.5 bg-slate-100">
+      <div id="completionProgressBar" class="h-full bg-gradient-to-r from-blue-600 to-emerald-600 transition-all duration-300" style="width: 0%;"></div>
+    </div>
+
+    <div class="max-w-6xl mx-auto px-3 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-2.5">
+      <!-- Brand + Progress -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 font-black text-sm flex items-center justify-center shrink-0">
+          S2S
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-sm sm:text-base font-black tracking-tight text-slate-900 uppercase">SCREEN TO SEEN</h1>
+            <span id="completedCountBadge" class="px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-bold">
+              0 / 13 Done
+            </span>
+          </div>
+          <p class="text-[11px] sm:text-xs text-slate-500 font-medium">Tablet Stage Teleprompter • 45 Min • 25 Slides</p>
+        </div>
+      </div>
+
+      <!-- Live 45:00 Stage Timer Console -->
+      <div class="flex items-center gap-1.5 sm:gap-2 bg-slate-50 border border-slate-200 rounded-2xl px-3 py-1.5">
+        <div class="text-right pr-1">
+          <div id="timerModeLabel" class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Remaining</div>
+          <div id="stageTimerDisplay" class="font-mono text-lg sm:text-xl font-black text-slate-900 leading-none">45:00</div>
+        </div>
+        <button id="timerToggleBtn" onclick="toggleStageTimer()" class="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs sm:text-sm font-bold shadow-sm transition">
+          ▶ Start
+        </button>
+        <button onclick="switchTimerDirection()" title="Switch Countdown (45:00) / Elapsed (00:00)" class="p-2 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold" aria-label="Switch Timer Mode">
+          ⇅
+        </button>
+        <button onclick="resetStageTimer()" title="Reset Timer" class="p-2 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold" aria-label="Reset Timer">
+          ↺
+        </button>
+      </div>
+
+      <!-- Tablet Ergonomics: Font Scale, View Mode, Wake Lock -->
+      <div class="flex items-center gap-1.5 sm:gap-2">
+        <!-- Font Scaler -->
+        <div class="inline-flex items-center bg-slate-50 border border-slate-200 rounded-xl p-0.5" role="group" aria-label="Text Size">
+          <button onclick="setFontScale('sm')" id="fontBtn-sm" class="font-scale-btn px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900">A-</button>
+          <button onclick="setFontScale('md')" id="fontBtn-md" class="font-scale-btn px-2.5 py-1.5 rounded-lg text-xs font-black bg-white text-blue-700 shadow-sm border border-slate-200">A</button>
+          <button onclick="setFontScale('lg')" id="fontBtn-lg" class="font-scale-btn px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900">A+</button>
+          <button onclick="setFontScale('xl')" id="fontBtn-xl" class="font-scale-btn px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900">A++</button>
+        </div>
+
+        <!-- Focus Mode vs All Scroll Toggle -->
+        <button id="viewModeBtn" onclick="toggleViewMode()" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-800 text-xs font-bold transition">
+          📖 Single Focus
+        </button>
+
+        <!-- Screen Wake Lock Toggle -->
+        <button id="wakeLockBtn" onclick="toggleWakeLock()" title="Keep Tablet Screen Awake on Stage" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 text-xs font-bold transition">
+          ☀️ Awake: OFF
+        </button>
+      </div>
+    </div>
+
+    <!-- Secondary Filter & Navigation Bar: Search + Slide Jump + Horizontal Segment Pills -->
+    <div class="border-t border-slate-100 bg-slate-50/70">
+      <div class="max-w-6xl mx-auto px-3 sm:px-6 py-2 flex flex-col md:flex-row md:items-center gap-2">
+        <!-- Search & Slide Jump -->
+        <div class="flex items-center gap-2 shrink-0">
+          <div class="relative flex-1 md:w-52">
+            <input id="scriptSearchInput" type="search" oninput="handleSearchInput()" placeholder="🔍 Search script / keyword..." class="w-full px-3 py-1.5 rounded-xl bg-white border border-slate-300 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600" />
+          </div>
+          <select id="slideJumpSelect" onchange="jumpToSlide(this.value)" class="px-3 py-1.5 rounded-xl bg-white border border-slate-300 text-xs sm:text-sm font-bold text-blue-700 focus:outline-none focus:border-blue-600">
+            <option value="">🎞️ Jump to Slide (1–25)</option>
+          </select>
+        </div>
+
+        <!-- Horizontal Touch-Scrollable Segment Pill Tabs -->
+        <nav id="segmentPillsNav" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 flex-1" aria-label="Segments">
+          <!-- Populated dynamically -->
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== MAIN TELEPROMPTER CONTENT AREA ==================== -->
+  <main class="flex-1 max-w-5xl w-full mx-auto px-3 sm:px-6 py-6 sm:py-8">
+    <!-- Status Toast -->
+    <div id="toastBanner" class="hidden fixed bottom-24 right-5 z-50 px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs sm:text-sm font-bold shadow-xl"></div>
+
+    <!-- Segments Container -->
+    <div id="segmentsContainer" class="space-y-8">
+      <!-- Populated dynamically with all 13 richly detailed segments -->
+    </div>
+  </main>
+
+  <!-- ==================== STICKY BOTTOM TOUCH NAVIGATION BAR ==================== -->
+  <footer class="no-print sticky bottom-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-sm">
+    <div class="max-w-5xl mx-auto px-3 sm:px-6 py-3 flex items-center justify-between gap-3">
+      <button id="prevSegBtn" onclick="navigateSegment(-1)" class="px-4 sm:px-6 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 active:scale-95 disabled:opacity-40 disabled:pointer-events-none border border-slate-300 text-slate-900 font-extrabold text-xs sm:text-sm flex items-center gap-2 transition">
+        <span>←</span>
+        <span>Previous Segment</span>
+      </button>
+
+      <div class="text-center">
+        <div id="activeSegIndicator" class="text-xs sm:text-sm font-black text-blue-700">Segment 1 of 13</div>
+        <div id="activeTimeIndicator" class="text-[11px] text-slate-500 font-semibold">00:00 – 02:30 Min • Slides 1–2</div>
+      </div>
+
+      <button id="nextSegBtn" onclick="navigateSegment(1)" class="px-5 sm:px-7 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-95 disabled:opacity-40 disabled:pointer-events-none text-white font-extrabold text-xs sm:text-sm flex items-center gap-2 shadow-sm transition">
+        <span>Next Segment</span>
+        <span>→</span>
+      </button>
+    </div>
+  </footer>
+
+  <script>
+    // ==================== COMPLETE 13-SEGMENT MASTER TELEPROMPTER DATA ====================
+    const MASTER_SEGMENTS = [
+      {
+        id: "seg-1",
+        shortLabel: "Seg 01 • Hook",
+        badge: "SEGMENT 01",
+        time: "00:00 – 02:30 Min",
+        slides: [1, 2],
+        slideLabel: "Slides 1 – 2",
+        title: "ദി കില്ലർ ഓപ്പണിംഗ് ഹുക്ക് (Who Wants to Leave First?)",
+        objective: "ആദ്യ 90 സെക്കൻഡിനുള്ളിൽ പ്ലസ് വൺ, പ്ലസ് ടു വിദ്യാർത്ഥികളുടെ പ്രതിരോധ മനോഭാവം (Defensive Wall) തകർക്കുക, അവരെ ചിരിപ്പിക്കുക, അവരുടെ പൂർണ്ണ ശ്രദ്ധ സ്ക്രീനിലേക്ക് കൊണ്ടുവരിക.",
+        slideVisuals: [
+          "Slide 1 (Title): SCREEN TO SEEN — \"Don’t just be Follower in reel life! Become a shining protagonist in real life!\" (3 Pillars: Neuroscience & Attention | Cyber & Financial Safety | Smart AI & Focus Hacks).",
+          "Slide 2 (Opening Hook): \"Who Wants to Leave First? 🚪\" + Today's 45-Minute Mission (01 to 04)."
+        ],
+        stageAction: "ഗുഡ് മോർണിംഗ് കുട്ടികളേ, ഇന്ന് ഞാൻ നിങ്ങളെ മൊബൈൽ ഫോണിന്റെ ദോഷങ്ങളെക്കുറിച്ച് ഉപദേശിക്കാൻ വന്നതാണ് എന്ന സാധാരണ പ്രസംഗകരുടെ ശൈലി പൂർണ്ണമായി ഒഴിവാക്കുക. വേദിയുടെ ഒത്ത നടുവിലേക്ക് ആത്മവിശ്വാസത്തോടെ നടന്നു വരിക. കയ്യിൽ മൈക്ക് പിടിക്കുക, പോക്കറ്റിൽ കൈയിടരുത്. സംസാരിച്ചു തുടങ്ങുന്നതിന് മുൻപ് കൃത്യം 3 സെക്കൻഡ് നിശബ്ദമായി ഹാളിന്റെ ഇടതുവശം മുതൽ വലതുവശം വരെയുള്ള കുട്ടികളുടെ കണ്ണുകളിലേക്ക് നോക്കി പുഞ്ചിരിക്കുക.",
+        scriptBlocks: [
+          {
+            cue: "ഘട്ടം 1: സൗഹൃദപരമായ പ്രവേശനം (Slide 1 & Slide 2)",
+            note: "ചെറിയൊരു പുഞ്ചിരിയോടെ, വളരെ സൗഹൃദപരമായ ശബ്ദത്തിൽ സംസാരിക്കുക",
+            text: "എല്ലാവർക്കും നമസ്കാരം!\n\nനമുക്ക് ക്ലാസിലേക്ക് കടക്കുന്നതിന് മുൻപ് പരസ്പരം ഒരൊറ്റ സത്യം തുറന്നു പറയാം... നമ്മൾ എല്ലാവരും ഭയങ്കര തിരക്കുള്ള ആളുകളല്ലേ? (കുട്ടികളുടെ മുഖത്തേക്ക് നോക്കുക)\n\nഎനിക്കാണെങ്കിൽ ഒരുപാട് ജോലികളും ക്ലാസുകളുമുണ്ട്. നിങ്ങൾക്കാണെങ്കിൽ പരീക്ഷകളും, അസൈൻമെന്റുകളും, ബോർഡ് എക്സാം തയ്യാറെടുപ്പുകളുമായി അതിലും വലിയ തിരക്കുകളുണ്ടാകും, ശരിയല്ലേ?\n\nഅതുകൊണ്ട് ഈ ഹാളിൽ വെറുതെ സമയം കളയാൻ എനിക്കും താല്പര്യമില്ല, നിങ്ങൾക്കും താല്പര്യമുണ്ടാകില്ല. സത്യത്തിൽ ഈ സെഷൻ എത്രയും വേഗം തീർത്ത് ആദ്യം പുറത്തുപോകണം എന്ന് ഏറ്റവും കൂടുതൽ ആഗ്രഹിക്കുന്നത് ഞാനാണ്!"
+          },
+          {
+            cue: "ഘട്ടം 2: 2-സെക്കൻഡ് പോസ് & ചലഞ്ച് ക്ഷണം (Slide 2)",
+            note: "2 സെക്കൻഡ് നിർത്തുക — ഹാളിൽ ചിരി ഉയരും. തുടർന്ന് പിൻനിരയിലേക്ക് നോക്കി ചോദിക്കുക",
+            text: "പക്ഷേ എനിക്ക് നൂറ് ശതമാനം ഉറപ്പുണ്ട്... എന്നേക്കാൾ മുൻപ്, എത്രയും പെട്ടെന്ന് ആ വാതിൽ തുറന്ന് ആദ്യം പുറത്തുപോകണം എന്ന് ആഗ്രഹിക്കുന്നത് നിങ്ങളാണ്, അല്ലേ? സത്യമല്ലേ?\n\nഎന്നാൽ ആ വാതിലിലേക്ക് ഓടുന്നതിന് മുൻപ്, നമുക്ക് ദേ സ്ക്രീനിലുള്ള ഈ ചെറിയ ചലഞ്ച് ഒന്ന് സോൾവ് ചെയ്തു നോക്കാം!"
+          }
+        ],
+        lifeRelation: "No Moral Policing & Curiosity Gap: സാധാരണ അധ്യാപകർ വേദിയിൽ വരുമ്പോൾ കൗമാരക്കാരിൽ ഉണ്ടാകുന്ന 'ഇപ്പോൾ ഉപദേശം തുടങ്ങും' എന്ന മടുപ്പ് (Resistance) 'എനിക്കും നിങ്ങളെപ്പോലെ വേഗം പുറത്തുപോകണം' എന്ന വാചകത്തിലൂടെ തകരുന്നു. നിങ്ങൾ അവരുടെ പക്ഷത്തുള്ള ഒരാളായി (Peer/Ally) മാറുന്നു."
+      },
+      {
+        id: "seg-2",
+        shortLabel: "Seg 02 • 3-Line Puzzle",
+        badge: "SEGMENT 02",
+        time: "02:30 – 05:00 Min",
+        slides: [3, 4],
+        slideLabel: "Slides 3 – 4",
+        title: "ചലഞ്ച് 1 — 9-ഡോട്സ് 3-ലൈൻ ലാറ്ററൽ സ്ലൈസ് (Physical Thickness)",
+        objective: "കൗമാരക്കാരുടെ ബുദ്ധിപരമായ അഹംഭാവത്തെ (Intellectual Ego) വെല്ലുവിളിക്കുക, അവരുടെ ചിന്താരീതിയിലെ 'അദൃശ്യ നിയമങ്ങൾ' (Unstated Rules) പൊളിച്ചെഴുതുക.",
+        slideVisuals: [
+          "Slide 3: Interactive 600x300 SVG Canvas (Dots: 0 / 9, Lines: 0 / 3) + '✨ Reveal 3-Line Solution' button.",
+          "Slide 4: Physical Thickness വിശദീകരണം + 4 Invisible Limits + Lateral Thinking (1967) vs. Vertical Thinking താരതമ്യം."
+        ],
+        stageAction: "സ്ക്രീനിലെ 9 ഡോട്ടുകളിലേക്ക് ചൂണ്ടിക്കാണിക്കുക. ഒരു ക്വിസ് മാസ്റ്ററുടെ ആവേശത്തോടെ സംസാരിക്കുക. കൃത്യം 30 സെക്കൻഡ് മാത്രം കുട്ടികൾക്ക് ആലോചിക്കാനും വായുവിലോ നോട്ട്ബുക്കിലോ വരച്ചു നോക്കാനും സമയം നൽകുക. തുടർന്ന് 'Reveal 3-Line Solution' ബട്ടൺ ക്ലിക്ക് ചെയ്ത് ലൈവ് പെൻ ആനിമേഷൻ കാണിക്കുക.",
+        scriptBlocks: [
+          {
+            cue: "ഘട്ടം 1: ചോദ്യം അവതരിപ്പിക്കൽ (Slide 3)",
+            note: "30 സെക്കൻഡ് ഓഡിയൻസ് ബ്രെയിൻ ടീസർ",
+            text: "ദേ, നിങ്ങളുടെ മുന്നിൽ വെറും 9 ഡോട്ടുകൾ മാത്രമേയുള്ളൂ. നിബന്ധനകൾ വളരെ ലളിതമാണ്:\n1. പേനയോ വിരലോ കൈയെടുക്കാതെ (Without lifting the pen) വരയ്ക്കണം.\n2. കൃത്യം 3 നേർവരകൾ (3 Straight lines) മാത്രമേ ഉപയോഗിക്കാൻ പാടുള്ളൂ.\n3. ഈ 9 ഡോട്ടുകളെയും ആ 3 വരകൾ സ്പർശിച്ചിരിക്കണം!\n\nആർക്ക് പറ്റും? ഒന്ന് ട്രൈ ചെയ്തു നോക്കൂ... വെറും 30 സെക്കൻഡ് സമയം! (കുട്ടികൾ കൈകൊണ്ട് വായുവിൽ വരയ്ക്കുന്നത് നോക്കി ചിരിക്കുക)\n\nസാധാരണ 4 വരകൾ കൊണ്ട് പോലും പലർക്കും കിട്ടാറില്ല, അപ്പോഴാണ് 3 വര! 'ഇത് അസാധ്യമാണ് (Impossible)' എന്ന് നിങ്ങളുടെ തലച്ചോർ ഇപ്പോൾ നിങ്ങളോട് പറയുന്നുണ്ടാകും, അല്ലേ?"
+          },
+          {
+            cue: "ഘട്ടം 2: ഉത്തരം വെളിപ്പെടുത്തൽ & Physical Thickness (Slide 4)",
+            note: "Reveal 3-Line Solution ആനിമേഷൻ കാണിച്ച ശേഷം Slide 4-ലേക്ക് മാറുക",
+            text: "ഒന്ന് സൂക്ഷിച്ചു നോക്കൂ... എങ്ങനെയാണ് ഇത് സാധ്യമായത്? ഗണിതശാസ്ത്രത്തിലെ (Euclidean Geometry) കനമില്ലാത്ത, പൂജ്യം വ്യാസമുള്ള (Zero-diameter) ബിന്ദുക്കളല്ല നിങ്ങളുടെ മുന്നിലിരിക്കുന്നത്. കടലാസിലോ സ്ക്രീനിലോ വരയ്ക്കുന്ന ഡോട്ടുകൾക്ക് കൃത്യമായ ഒരു വലിപ്പവും കനവുമുണ്ട് (Physical Radius / Thickness)!\n\nനോക്കൂ:\n• ഒന്നാമത്തെ വര: മുകളിൽ വലതുവശത്ത് നിന്ന് ചെറിയൊരു ചരിവോടെ താഴേക്ക് വന്ന്, ആദ്യ വരിയിലെ 3 ഡോട്ടുകളുടെയും ഏറ്റവും മുകൾഭാഗം (Top Edge) സ്പർശിച്ചു കടന്നുപോകുന്നു.\n• രണ്ടാമത്തെ വര: ഇടതുവശത്ത് അതിർത്തിക്ക് പുറത്തേക്ക് നീണ്ട്, കൂർത്ത ആംഗിളിൽ തിരിഞ്ഞ് നടുവിലെ വരിയുടെ കൃത്യം മധ്യത്തിലൂടെ (Center) വലതുവശത്തേക്ക് നീളുന്നു.\n• മൂന്നാമത്തെ വര: വലതുവശത്ത് പുറത്തുനിന്ന് തിരിഞ്ഞ് താഴത്തെ വരിയിലെ 3 ഡോട്ടുകളുടെയും അടിഭാഗം (Bottom Edge) സ്പർശിച്ചു യോജിപ്പിക്കുന്നു!\n\nഒറ്റ വര പോലും കൈയെടുത്തില്ല, കൃത്യം 3 നേർവരകൾ, 9 ഡോട്ടുകളും കണക്ട് ആയി!"
+          }
+        ],
+        lifeRelation: "Invisible Limits & Lateral vs. Vertical Thinking: ചോദ്യത്തിൽ 'ഡോട്ടിന്റെ നടുവിലൂടെ വരയ്ക്കണം' എന്ന് ആരും പറഞ്ഞിരുന്നില്ല. പ്ലസ് വണ്ണിലും പ്ലസ് ടുവിലും എത്തുമ്പോൾ പല കുട്ടികളും സ്വന്തമായി ചില അദൃശ്യ നിയമങ്ങൾ ഉണ്ടാക്കിവെക്കാറുണ്ട്: 'ഞാൻ ശ്രമിച്ചാലും ഒന്നും മാറാൻ പോകുന്നില്ല', 'എന്റെ അഭിപ്രായങ്ങൾക്ക് ആരും വില നൽകില്ല', 'ഞാൻ എപ്പോഴും മറ്റുള്ളവരേക്കാൾ പിന്നിലാണ്', 'എനിക്ക് ഒന്നിലും പ്രത്യേക കഴിവില്ല'. ഒരേ കുഴി തന്നെ ആഴത്തിൽ കുഴിക്കുന്ന വെർട്ടിക്കൽ തിങ്കിംഗിന് (Vertical Thinking) പകരം പുതിയ വഴികൾ തേടുന്ന ലാറ്ററൽ തിങ്കിംഗ് (Lateral Thinking) ശീലമാക്കുക — 'പറയാത്ത പരിധികൾ സ്വയം സൃഷ്ടിക്കാതിരിക്കുന്നതാണ് യഥാർത്ഥ പാർശ്വ ചിന്ത!'"
+      },
+      {
+        id: "seg-3",
+        shortLabel: "Seg 03 • 6-Inch Box",
+        badge: "SEGMENT 03",
+        time: "05:00 – 08:00 Min",
+        slides: [5, 6],
+        slideLabel: "Slides 5 – 6",
+        title: "ചലഞ്ച് 2 — 9-ഡോട്സ് 4-ലൈൻ ബോക്സ്-ബ്രേക്ക് & മാസ്റ്റർ ട്രാൻസിഷൻ",
+        objective: "മനുഷ്യമനസ്സ് സ്വയം സൃഷ്ടിക്കുന്ന 'അദൃശ്യ ചതുരക്കൂടിനെ' (Imaginary Box) ബോധ്യപ്പെടുത്തുക, അതിനെ നമ്മുടെ കൈയിലെ 6-ഇഞ്ച് സ്മാർട്ട്‌ഫോൺ ബോക്സുമായി ബന്ധിപ്പിച്ച് സെഷന്റെ പ്രധാന തീമിലേക്ക് സ്വാഗതം ചെയ്യുക.",
+        slideVisuals: [
+          "Slide 5: Interactive SVG Canvas with red dashed 'IMAGINARY BOX' + '🚀 Reveal Box-Break Solution' button.",
+          "Slide 6: 'A 6-inch square box in our pocket! 📱' + Quote + Blue Welcome Banner: LET US MOVE FROM SCREEN TO SEEN!"
+        ],
+        stageAction: "ക്ലാസിൽ നിന്ന് ആത്മവിശ്വാസമുള്ള ഒരു വിദ്യാർത്ഥിയെ (Volunteer) വേദിയിലേക്ക് വിളിക്കുക. വിദ്യാർത്ഥി 9 ഡോട്ടുകൾ ചേർന്നുണ്ടാകുന്ന ചതുരത്തിന് ഉള്ളിൽ വരയ്ക്കാൻ ശ്രമിക്കുമ്പോൾ 1 ഡോട്ട് ബാക്കിയാകും. നന്ദി പറഞ്ഞ് സീറ്റിലേക്ക് അയച്ച ശേഷം 'Reveal Box-Break Solution' ക്ലിക്ക് ചെയ്യുക. തുടർന്ന് വേദിയുടെ മുൻനിരയിലേക്ക് വന്ന് കയ്യിൽ ഒരു സ്മാർട്ട്‌ഫോൺ ഉയർത്തിപ്പിടിച്ച് ആവേശത്തോടെ സംസാരിക്കുക.",
+        scriptBlocks: [
+          {
+            cue: "ഘട്ടം 1: വോളണ്ടിയർ ചലഞ്ച് (Slide 5)",
+            note: "വേദിയിലേക്ക് ഒരു വിദ്യാർത്ഥിയെ ക്ഷണിച്ചുകൊണ്ട്",
+            text: "ശരി, ആദ്യത്തെ ചലഞ്ചിൽ നമ്മൾ ഡോട്ടുകളുടെ അറ്റത്തുകൂടി വരച്ചു. ഇനി അടുത്ത ചലഞ്ച്: ഈ 9 ഡോട്ടുകളുടെയും കൃത്യം നടുവിലൂടെ (Through the center) തന്നെ വരയ്ക്കണം. നിബന്ധനകൾ ഇതാണ്:\n1. കൈയെടുക്കാതെ വരയ്ക്കണം.\n2. കൃത്യം 4 നേർവരകൾ മാത്രം!\n\nആരാണ് സ്റ്റേജിലേക്ക് വന്ന് ഇത് വരച്ചു കാണിക്കാൻ തയ്യാറുള്ളത്? ധൈര്യമായി വരൂ!\n\n(വിദ്യാർത്ഥി വരയ്ക്കാൻ ശ്രമിക്കുമ്പോൾ, ഹാളിലെ ബാക്കിയുള്ളവരോട്)\nനോക്കൂ... അവൻ/അവൾ വരയ്ക്കുന്നത് കണ്ടോ? എല്ലാവരുടെയും മനസ്സിൽ ഈ 9 ഡോട്ടുകൾക്ക് ചുറ്റും ഒരു ചതുരമുണ്ട്. ആ ചതുരത്തിന് ഉള്ളിൽ നിന്നുകൊണ്ട് വരയ്ക്കാൻ ശ്രമിക്കുമ്പോൾ ഒരൊറ്റ ഡോട്ട് എപ്പോഴും ബാക്കിയാകും!"
+          },
+          {
+            cue: "ഘട്ടം 2: ഉത്തരം & മാസ്റ്റർ ട്രാൻസിഷൻ — 6-ഇഞ്ച് ബോക്സ് (Slide 6)",
+            note: "കയ്യിൽ സ്മാർട്ട്‌ഫോൺ ഉയർത്തിപ്പിടിച്ച്, ശബ്ദത്തിൽ ഗൗരവവും ആവേശവും നിറച്ച്",
+            text: "ഈ 9 ഡോട്ടുകൾക്ക് പുറത്തേക്ക് വരയ്ക്കാൻ പാടില്ല എന്ന് ചോദ്യത്തിൽ എവിടെയെങ്കിലും പറഞ്ഞിരുന്നോ? ഇല്ല! ചതുരത്തിന് പുറത്തേക്ക് വരകൾ നീട്ടി (Overshoot) വരയ്ക്കുമ്പോഴാണ് 4 വരകൾ കൊണ്ട് ഇത് പൂർത്തിയാകുന്നത്. ഇംഗ്ലീഷിലെ പ്രശസ്തമായ 'Think Outside the Box' എന്ന പ്രയോഗം ജനിച്ചത് തന്നെ ഈ പസിലിൽ നിന്നാണ്!\n\n\"Look around. You are not alone, and you are not broken. We have all been handed the most powerful psychological machine in human history without an instruction manual.\"\n\nകണ്ടോ? ഈ 9 ഡോട്ടുകൾ കണ്ടപ്പോൾ തന്നെ നിങ്ങളുടെ തലച്ചോർ അതിനുചുറ്റും ഒരു അദൃശ്യ ചതുരക്കൂട് നിർമ്മിച്ചു. ആരും പറയാത്ത ആ ബോക്സിനുള്ളിൽ നമ്മൾ സ്വയം കുടുങ്ങിപ്പോവുകയാണ്. ഇന്ന് നമ്മുടെ ഓരോരുത്തരുടെയും പോക്കറ്റിലും കയ്യിലുമിരിക്കുന്ന സ്മാർട്ട്‌ഫോണും ഇതുപോലെയാണ്—വെറുമൊരു 6-ഇഞ്ച് ബോക്സ് (6-Inch Box)!\n\nനമ്മുടെ ചിന്തകളും, നമ്മുടെ സൗഹൃദങ്ങളും, നമ്മുടെ സ്വപ്നങ്ങളും, നമ്മുടെ സമയവും ആ 6 ഇഞ്ച് ചതുരക്കൂടിനുള്ളിൽ ഒതുങ്ങിപ്പോയിരിക്കുന്നു. പുറത്തൊരു വലിയ ലോകമുണ്ടെന്ന് നമ്മൾ മറന്നുപോയി! ആ 6-ഇഞ്ച് മാനസിക ചതുരക്കൂടിന് പുറത്തേക്ക് കടക്കാനും, സ്ക്രീനിലെ വെറുമൊരു കാഴ്ചക്കാരനാകാതെ യഥാർത്ഥ ജീവിതത്തിൽ തിളങ്ങുന്ന നായകനാകാനും നിങ്ങൾ തയ്യാറാണെങ്കിൽ...\n\nLET US MOVE FROM SCREEN TO SEEN!\nഎല്ലാവർക്കും ഈ സെഷനിലേക്ക് ഹൃദ്യമായ സ്വാഗതം! WELCOME TO ALL!"
+          }
+        ],
+        lifeRelation: "Comfort Zone vs. Growth Zone: നമുക്ക് പരിചിതമായ ആ 9 ഡോട്ടുകളുടെ ചതുരമാണ് നമ്മുടെ Comfort Zone (റീൽസ് കാണുക, ചാറ്റ് ചെയ്യുക). എന്നാൽ ജീവിതത്തിൽ വലിയ വിജയങ്ങളും (Board Exams, Entrance, Real Skills) യഥാർത്ഥ സന്തോഷവും ഇരിക്കുന്നത് ആ ചതുരത്തിന് പുറത്താണ്. അതിർത്തികൾ ഭേദിക്കാൻ നിങ്ങൾ തയ്യാറാണെങ്കിൽ, നിങ്ങൾക്ക് ചരിത്രം സൃഷ്ടിക്കാൻ കഴിയും!"
+      },
+      {
+        id: "seg-4",
+        shortLabel: "Seg 04 • Poll & Stroop",
+        badge: "SEGMENT 04",
+        time: "08:00 – 12:00 Min",
+        slides: [7, 8, 9, 10, 11, 12],
+        slideLabel: "Slides 7 – 12",
+        title: "റിയാലിറ്റി പോൾ (Top 5), ബാറ്റ്-ബോൾ റിയാക്ഷൻ ട്രാപ്പ് & സ്ട്രൂപ്പ് ഇഫക്റ്റ്",
+        objective: "കൗമാരക്കാരെ ഒട്ടും കുറ്റപ്പെടുത്താതെ (No Moral Policing), നമ്മുടെ തലച്ചോർ എങ്ങനെയാണ് ആപ്പുകളുടെ കെണിയിൽ വീഴുന്നത് എന്ന് 3 തത്സമയ പരീക്ഷണങ്ങളിലൂടെ ബോധ്യപ്പെടുത്തുക. നൊബേൽ സമ്മാന ജേതാവ് ഡാനിയൽ കാഹ്നെമാന്റെ System 1 vs. System 2 തിയറി പരിചയപ്പെടുത്തുക.",
+        slideVisuals: [
+          "Slides 7 & 8: Stand-Up Reality Poll (5 Questions) & 'It's Not Your Fault. It's a Designed System!' Verdict.",
+          "Slides 9 & 10: Bat & Ball Reaction Trap (₹10 vs ₹5) & Daniel Kahneman's System 1 vs. System 2.",
+          "Slides 11 & 12: Stroop Effect Interactive Color Grid ('Shuffle Colors') & Cognitive Hijacking in Exam Hall."
+        ],
+        stageAction: "Slide 7-ൽ കൈകൾ ഉയർത്തി ഹാളിലെ എല്ലാവരോടും എഴുന്നേറ്റു നിൽക്കാൻ ആവശ്യപ്പെടുക. ഓരോ ചോദ്യത്തിനും ശേഷം 3 സെക്കൻഡ് നിർത്തി പിൻനിരയിലേക്ക് നോക്കി ചിരിക്കുക. Slide 9-ൽ ആലോചിക്കാൻ സമയം കൊടുക്കാതെ ഉത്തരം ഉറക്കെ വിളിച്ചു പറയിപ്പിക്കുക. Slide 11-ൽ 'Shuffle Colors' അമർത്തി മഷിയുടെ നിറം മാത്രം പറയിപ്പിക്കുക.",
+        scriptBlocks: [
+          {
+            cue: "ഘട്ടം 1: സ്റ്റാൻഡ്-അപ്പ് റിയാലിറ്റി പോൾ — 5 ചോദ്യങ്ങൾ (Slides 7 & 8)",
+            note: "എല്ലാവരോടും എഴുന്നേറ്റു നിൽക്കാൻ ആവശ്യപ്പെടുക — 100% No-Shaming Zone",
+            text: "നമ്മൾ ആരും ആരെയും കുറ്റപ്പെടുത്താൻ പോവുകയല്ല—ഇതൊരു 'No-Shaming Zone' ആണ്. എല്ലാവരും ഒന്ന് എഴുന്നേറ്റു നിൽക്കാമോ? ഞാൻ 5 ചോദ്യങ്ങൾ ചോദിക്കും. താഴെ പറയുന്ന ശീലങ്ങൾ ഇല്ലാത്തവർ മാത്രം സീറ്റിൽ ഇരിക്കുക. സത്യസന്ധമായിരിക്കണം!\n\n1. The 2 Min Break Trap: \"10 മിനിറ്റ് പഠിച്ചിട്ട് അല്ലെങ്കിൽ ജോലി ചെയ്തിട്ട് '2 മിനിറ്റ് റെസ്റ്റ് എടുക്കാം' എന്ന് പറഞ്ഞ് ഫോൺ എടുക്കുകയും, ആ 2 മിനിറ്റ് 2 മണിക്കൂറായി മാറുകയും ചെയ്യാത്തവർ ഇരിക്കൂ!\"\n2. The Classic Excuse: \"വീട്ടിൽ കുറേ നേരമായി ഫോണിൽ കുത്തിയിരിക്കുമ്പോൾ, 'ഇനി മതി, ഫോൺ താഴെ വയ്ക്ക്' എന്ന് വീട്ടുകാർ പറയുമ്പോൾ, 'ഞാനിപ്പോൾ എടുത്തതേയുള്ളൂ!' എന്ന് ജീവിതത്തിൽ ഒരിക്കൽ പോലും കള്ളം പറയാത്തവർ ഇരിക്കൂ!\"\n3. Ninja Reflex: \"പഠിക്കാനിരുന്നിട്ട് രഹസ്യമായി ഫോൺ നോക്കുമ്പോൾ അമ്മ/അച്ഛൻ വരുന്ന ശബ്ദം കേട്ട് മിന്നൽ വേഗത്തിൽ ഫോൺ ഒളിപ്പിക്കാത്തവർ ഇരിക്കൂ!\"\n4. Midnight Reels Trap: \"രാത്രി 10 മണിക്ക് 'വെറും 5 മിനിറ്റ് റീൽസ് കണ്ടിട്ട് ഉറങ്ങാം' എന്ന് വിചാരിച്ച് സമയം 1 മണിയോ 2 മണിയോ ആകാത്തവർ ഇരിക്കൂ!\"\n5. No-Phone, No-Peace: \"ഫോൺ കയ്യിലെടുക്കാതെ ബാത്ത്റൂമിൽ പോയാൽ 'എന്തോ മന:സമാധാനം' തോന്നാത്തവർ ഇരിക്കൂ!\"\n\n(ഹാൾ മുഴുവൻ ചിരിക്കും, ആരും ഇരിക്കില്ല)\nഇനി എല്ലാവരും ഇരുന്നോളൂ! നിങ്ങൾ കണ്ടോ? ഈ ഹാളിൽ ഒരൊറ്റ ആൾ പോലും ഇരുന്നില്ല! You are not weak. This isn't a lack of will power. Nobody in this room is broken. നിങ്ങളുടെ വിരലുകൾക്കെതിരെ പ്രവർത്തിക്കുന്നത് ലോകത്തിലെ ഏറ്റവും ശക്തമായ Behavioral Engineering System ആണ്!"
+          },
+          {
+            cue: "ഘട്ടം 2: ബാറ്റ് & ബോൾ റിയാക്ഷൻ ട്രാപ്പ് & System 1 vs. 2 (Slides 9 & 10)",
+            note: "വേഗത്തിൽ ചോദ്യം ചോദിക്കുക — ക്ലാസ് ₹10 എന്ന് വിളിച്ചു പറയും",
+            text: "ഇനി നിങ്ങളുടെ തലച്ചോറിന്റെ വേഗത ഒന്ന് പരിശോധിക്കാം. ആലോചിക്കാൻ സമയം എടുക്കരുത്, ചോദ്യം കേട്ടയുടൻ ഉത്തരം ഉറക്കെ വിളിച്ചു പറയണം!\n\nചോദ്യം: ഒരു ബാറ്റിനും ബോളിനും കൂടി ആകെ വില ₹110. ബാറ്റിന് ബോളിനേക്കാൾ ₹100 കൂടുതൽ വിലയുണ്ട്. എങ്കിൽ ബോളിന്റെ മാത്രം വില എത്ര? പെട്ടെന്ന് പറയൂ!\n\n(Reveal Real Answer ക്ലിക്ക് ചെയ്യുക)\nകണ്ടോ? 95% ആളുകളും പറഞ്ഞത് ₹10 എന്നാണ്. പക്ഷേ ബോളിന് ₹10 ആണെങ്കിൽ ബാറ്റിന് ₹100 കൂടുതൽ വേണം—അപ്പോൾ ബാറ്റിന് ₹110 ആകും, രണ്ടും കൂടി ₹120 ആകും! ശരിയായ ഉത്തരം: ബോൾ = ₹5, ബാറ്റ് = ₹105 (ആകെ ₹110)!"
+          },
+          {
+            cue: "ഘട്ടം 3: സ്ട്രൂപ്പ് ഇഫക്റ്റ് & Cognitive Hijacking (Slides 11 & 12)",
+            note: "വാക്ക് വായിക്കാതെ മഷിയുടെ നിറം മാത്രം ഉറക്കെ പറയിപ്പിക്കുക",
+            text: "ഇനി ഒരു പരീക്ഷണം കൂടി! സ്ക്രീനിൽ ചില നിറങ്ങളുടെ പേരുകൾ എഴുതിയിട്ടുണ്ട്. നിങ്ങൾ ആ വാക്ക് വായിക്കരുത്; പകരം ആ അക്ഷരങ്ങൾ എഴുതിയിരിക്കുന്ന നിറം (Ink Color) മാത്രം ഉറക്കെ പറയണം! റെഡി? സ്റ്റാർട്ട്!\n\nഎന്തുകൊണ്ടാണ് നമുക്ക് തെറ്റിപ്പോകുന്നത്? കാരണം നമ്മുടെ തലച്ചോറിന് രണ്ട് എൻജിനുകളുണ്ട്:\n• System 1 (Fast • Autopilot): ചിന്തിക്കാതെ അതിവേഗം പ്രതികരിക്കുന്ന ഭാഗം.\n• System 2 (Slow • Analytical): ആഴത്തിൽ ചിന്തിക്കാനും കണക്ക് ചെയ്യാനും ഫിസിക്സ് തിയറികൾ മനസ്സിലാക്കാനും ഉപയോഗിക്കുന്ന ഭാഗം."
+          }
+        ],
+        lifeRelation: "Cognitive Hijacking in the Exam Hall: അപകടത്തെ സൂചിപ്പിക്കുന്ന ചുവന്ന നോട്ടിഫിക്കേഷൻ ഡോട്ട് (Red Badge) മനുഷ്യന്റെ പ്രാകൃതമായ System 1-നെ ഉണർത്തി ചിന്തിക്കുന്ന System 2-നെ ഉറക്കിക്കിടത്തുന്നു. ദിവസം മുഴുവൻ System 1 മാത്രം ഉപയോഗിച്ച് റീൽസ് സ്ക്രോൾ ചെയ്യുന്ന വിദ്യാർത്ഥി പരീക്ഷാ ഹാളിൽ എത്തുമ്പോൾ System 2 മരവിച്ചിരിക്കും. ചോദ്യം മുഴുവൻ വായിക്കാതെ തെറ്റായ ഉത്തരങ്ങൾ എഴുതുന്നത് ഇതുകൊണ്ടാണ്!"
+      },
+      {
+        id: "seg-5",
+        shortLabel: "Seg 05 • Silicon Valley",
+        badge: "SEGMENT 05",
+        time: "12:00 – 20:00 Min",
+        slides: [13, 14, 15, 16, 17],
+        slideLabel: "Slides 13 – 17",
+        title: "സിലിക്കൺ വാലി രഹസ്യങ്ങൾ, പോക്കറ്റ് കാസിനോ & ആഗോള കണക്കുകൾ",
+        objective: "ആപ്പുകൾ വെറും വിനോദോപാധികളല്ല, മറിച്ച് നമ്മുടെ ശ്രദ്ധയെ (Attention) കച്ചവടം ചെയ്യുന്ന കോടിക്കണക്കിന് രൂപയുടെ ബിസിനസ്സ് തന്ത്രങ്ങളാണെന്ന് സിലിക്കൺ വാലിയിലെ യഥാർത്ഥ സംഭവങ്ങളിലൂടെയും ആഗോള പഠനങ്ങളിലൂടെയും ബോധ്യപ്പെടുത്തുക.",
+        slideVisuals: [
+          "Slide 13: 5 Shocking Truths About Silicon Valley (Steve Jobs, Bill Gates, Justin Rosenstein, Susan Wojcicki, Waldorf Schools).",
+          "Slide 14: The Attention Economy — \"If you are not paying for a product, you are the product.\"",
+          "Slide 15: The Pocket Casino (Aza Raskin's BBC Apology, 73% Soup Bowl Trap, 2,617 Daily Touches).",
+          "Slide 16: Live Multitasking Stopwatch ('I AM A TOPPER' vs 'I 1 A 2 M 3...') + 23m 15s Attention Residue & Death of Boredom.",
+          "Slide 17: Global Research Stats (Pew, CDC, OECD, Common Sense) & India's June 29, 2020 TikTok Ban."
+        ],
+        stageAction: "ഒരു ഇൻവെസ്റ്റിഗേറ്റീവ് ജേണലിസ്റ്റിന്റെ ഗൗരവത്തോടെ 5 സത്യങ്ങൾ അവതരിപ്പിക്കുക. Slide 16-ൽ കുട്ടികളോട് നോട്ട്ബുക്കും പേനയും എടുക്കാൻ ആവശ്യപ്പെട്ട് സ്ലൈഡിലെ 'Start Timer' ഉപയോഗിച്ച് Round 1 vs Round 2 സമയം തത്സമയം അളക്കുക.",
+        scriptBlocks: [
+          {
+            cue: "ഘട്ടം 1: സിലിക്കൺ വാലിയിലെ ഞെട്ടിക്കുന്ന 5 സത്യങ്ങൾ (Slide 13)",
+            note: "വളരെ വ്യക്തമായി ഓരോ പേരും എടുത്തു പറയുക",
+            text: "നിങ്ങളുടെ കൈയിലിരിക്കുന്ന ഈ 6-ഇഞ്ച് ഫോണിനെ നിയന്ത്രിക്കുന്നത് അമേരിക്കയിലെ വടക്കൻ കാലിഫോർണിയയിലുള്ള 'സിലിക്കൺ വാലി' (Silicon Valley) എന്ന ടെക് സാമ്രാജ്യമാണ്. Apple, Google, Meta, YouTube, OpenAI എന്നിവയുടെയെല്ലാം ആസ്ഥാനം അവിടെയാണ്. എന്നാൽ അവിടെ നടക്കുന്ന ഞെട്ടിക്കുന്ന 5 സത്യങ്ങൾ ഇതാ:\n\n1. Steve Jobs (Apple): ലോകം മുഴുവൻ ഐഫോണിലേക്കും ഐപാഡിലേക്കും നോക്കി ജീവിക്കാൻ പ്രേരിപ്പിച്ച ആപ്പിൾ സ്ഥാപകൻ സ്റ്റീവ് ജോബ്സ് സ്വന്തം മക്കൾക്ക് രാത്രിയിലും വാരാന്ത്യങ്ങളിലും iPad ഉപയോഗിക്കാൻ അനുവാദം നൽകിയിരുന്നില്ല!\n2. Bill Gates (Microsoft): മൈക്രോസോഫ്റ്റിന്റെ ഉടമ ബിൽ ഗേറ്റ്സ്, സ്വന്തം മക്കൾക്ക് 14 വയസ്സ് തികയുന്നതുവരെ ഒരു സ്മാർട്ട്‌ഫോൺ പോലും തൊടാൻ നൽകിയിരുന്നില്ല; ഭക്ഷണമേശയിലും ഫോൺ നിരോധിച്ചിരുന്നു.\n3. Justin Rosenstein ('Like' Button Inventor): ഫേസ്ബുക്കിലും ഇൻസ്റ്റാഗ്രാമിലും നിങ്ങൾ അമർത്തുന്ന 'Like' ബട്ടൺ കണ്ടുപിടിച്ച എഞ്ചിനീയർ സ്വന്തം ഫോണിൽ നിന്ന് സോഷ്യൽ മീഡിയ ഡിലീറ്റ് ചെയ്ത് ആപ്പ് ഡൗൺലോഡ് ലോക്ക് ചെയ്തു വെച്ചു!\n4. Susan Wojcicki (Ex-YouTube CEO): യൂട്യൂബ് സി.ഇ.ഒ സ്വന്തം മക്കളുടെ ഫോണിൽ നിന്ന് സാധാരണ YouTube ആപ്പ് ഒഴിവാക്കി കർശന സമയനിയന്ത്രണം ഏർപ്പെടുത്തി.\n5. Waldorf Schools of Silicon Valley: Google, Meta എഞ്ചിനീയർമാരുടെ മക്കൾ പഠിക്കുന്ന വാൾഡോർഫ് സ്കൂളുകളിൽ ക്ലാസ് മുറികളിൽ കമ്പ്യൂട്ടറുകളും ഫോണുകളും പൂർണ്ണമായി നിരോധിച്ചിരിക്കുന്നു!\n\nഒന്ന് ആലോചിച്ചു നോക്കൂ... ഈ വല നെയ്തവർ സ്വന്തം മക്കളെ അതിൽ കുടുങ്ങാൻ വിടുന്നില്ല; പക്ഷേ നിങ്ങളുടെ കൈകളിലേക്ക് അത് സൗജന്യമായി വെച്ചുനീട്ടുന്നു!"
+          },
+          {
+            cue: "ഘട്ടം 2: അറ്റൻഷൻ എക്കണോമി & പോക്കറ്റിലെ കാസിനോ (Slides 14 & 15)",
+            note: "കൈകൊണ്ട് സ്ക്രോൾ ചെയ്യുന്ന ആക്ഷൻ കാണിച്ചുകൊണ്ട്",
+            text: "അറ്റൻഷൻ എക്കണോമിയിൽ ഒരു സുവർണ്ണ നിയമമുണ്ട്: \"If you are not paying for a product, you are the product.\" നിങ്ങൾ ഒരു സോഷ്യൽ മീഡിയ ആപ്പിൽ ഒരു മണിക്കൂർ ചെലവഴിക്കുമ്പോൾ, യഥാർത്ഥത്തിൽ ആർക്കാണ് കൂടുതൽ പ്രയോജനം ലഭിക്കുന്നത്? ഓർക്കുക: ആപ്പ് സൗജന്യമായിരിക്കാം, പക്ഷേ നിങ്ങളുടെ സമയത്തിന് വിലയുണ്ട്!\n\n2006-ൽ 'Infinite Scroll' കണ്ടുപിടിച്ച സിലിക്കൺ വാലി എഞ്ചിനീയർ അസാ റാസ്കിൻ (Aza Raskin), മനുഷ്യരാശിയുടെ ലക്ഷക്കണക്കിന് വർഷത്തെ വിലപ്പെട്ട സമയം മോഷ്ടിച്ചതിന് പിന്നീട് BBC-യിലൂടെ ലോകത്തോട് പരസ്യമായി മാപ്പ് പറഞ്ഞു! കോർണൽ യൂണിവേഴ്സിറ്റി പഠനത്തിൽ അടിഭാഗത്ത് നിന്ന് സ്വയം നിറയുന്ന ബൗളിൽ നിന്ന് ആളുകൾ 73% കൂടുതൽ സൂപ്പ് കുടിച്ചു—റീൽസിൽ 'Stopping Cue' ഇല്ലാത്തതും ഇതേ തന്ത്രമാണ്. ലാസ് വെഗാസ് സ്ലോട്ട് മെഷീനുകളുടെ മാതൃകയിലുള്ള Pull-to-Refresh കാരണം ഒരു ശരാശരി കൗമാരക്കാരൻ ദിവസവും 2,617 തവണ സ്ക്രീനിൽ തൊടുന്നു!"
+          },
+          {
+            cue: "ഘട്ടം 3: മൾട്ടിടാസ്കിംഗ് സ്റ്റോപ്പ്‌വാച്ച് & ആഗോള കണക്കുകൾ (Slides 16 & 17)",
+            note: "Round 1 vs Round 2 ലൈവ് ടൈമർ പരീക്ഷണം നടത്തുക",
+            text: "നമുക്ക് മൾട്ടിടാസ്കിംഗ് ഒന്ന് പരീക്ഷിക്കാം! Round 1-ൽ 'I AM A TOPPER' എന്ന് എഴുതിയ ശേഷം താഴെ 1 മുതൽ 10 വരെ എഴുതുക. Round 2-ൽ മാറിമാറി എഴുതുക: 'I 1 A 2 M 3 A 4 T 5...'! കണ്ടോ, രണ്ടാമത്തെ തവണ മൂന്നിരട്ടി സമയം വേണ്ടിവന്നു! യൂണിവേഴ്സിറ്റി ഓഫ് കാലിഫോർണിയയിലെ പ്രൊഫസർ ഗ്ലോറിയ മാർക്ക് കണ്ടെത്തിയ സത്യം ഇതാണ്: പഠിക്കുമ്പോൾ ഒരൊറ്റ നോട്ടിഫിക്കേഷൻ നോക്കിയാൽ പഴയ ഏകാഗ്രത തിരികെ ലഭിക്കാൻ 23 മിനിറ്റും 15 സെക്കൻഡും വേണം!\n\nആഗോള പഠനങ്ങൾ (US & 38 OECD രാജ്യങ്ങൾ) നോക്കൂ: 96% കൗമാരക്കാർ ദിവസവും ഇന്റർനെറ്റും 73% YouTube-ഉം ഉപയോഗിക്കുന്നു (Pew, 2024); 50.4% പേർ ദിവസവും 4+ മണിക്കൂർ സ്ക്രീൻ ഉപയോഗിക്കുന്നവരിൽ ഉത്കണ്ഠയും വിഷാദവും കൂടുതലാണ് (CDC, 2024); 15 വയസ്സുകാരുടെ ശരാശരി സോഷ്യൽ മീഡിയ ഉപയോഗം ആഴ്ചയിൽ 35 മണിക്കൂറാണ് (OECD, 2025). ഇന്ത്യയിൽ 2020 ജൂൺ 29-ന് ദേശീയ സുരക്ഷ, ഡാറ്റാ സ്വകാര്യത, വിദേശ സെർവറുകളിലേക്കുള്ള സൈബർ സുരക്ഷാ ഭീഷണി എന്നിവ കാരണം TikTok ഉൾപ്പെടെ 59 ആപ്പുകൾ നിരോധിച്ചു."
+          }
+        ],
+        lifeRelation: "1-Hour Study Myth & Death of Boredom: 1 മണിക്കൂർ പഠനത്തിനിടെ 4 തവണ ഫോൺ നോക്കിയാൽ (23 മിനിറ്റ് വീതം ശ്രദ്ധ നഷ്ടപ്പെട്ട്) ആ 1 മണിക്കൂറും വെറുതെയാകുന്നു. പണ്ട് ബോറടിച്ചിരിക്കുമ്പോഴാണ് വലിയ ആശയങ്ങളും കവിതകളും ജനിച്ചിരുന്നത്; ഇന്ന് 5 സെക്കൻഡ് ബോറടിക്കുമ്പോഴേക്കും റീൽസ് തുറന്ന് നമ്മൾ ക്രിയേറ്റിവിറ്റിയെ കൊല്ലുന്നു."
+      },
+      {
+        id: "seg-6",
+        shortLabel: "Seg 06 • Body Health",
+        badge: "SEGMENT 06",
+        time: "20:00 – 24:00 Min",
+        slides: [18],
+        slideLabel: "Slide 18",
+        title: "ശാരീരിക ആരോഗ്യ പ്രശ്നങ്ങൾ (3 Warnings from Our Body)",
+        objective: "സ്മാർട്ട്‌ഫോണിന്റെ അമിതോപയോഗം കൗമാരക്കാരുടെ വളരുന്ന നട്ടെല്ലിനെയും കണ്ണുകളെയും ഉറക്കത്തെയും എത്രത്തോളം ഗുരുതരമായി ബാധിക്കുന്നു എന്ന് ശാസ്ത്രീയ കണക്കുകളിലൂടെ ബോധ്യപ്പെടുത്തുക.",
+        slideVisuals: [
+          "Slide 18: 3 Warning Cards — 1. Text Neck Syndrome (0° = 5kg ➔ 60° = 27kg) | 2. Digital Eye Strain (20-20-20 Rule) | 3. Melatonin Block (Blue Light = Memory Loss)."
+        ],
+        stageAction: "സ്വന്തം കഴുത്തിൽ കൈവെച്ച്, തല 60 ഡിഗ്രി താഴ്ത്തി ഫോൺ നോക്കുന്ന ആക്ഷൻ വേദിയിൽ അഭിനയിച്ചു കാണിക്കുക. കുട്ടികളോടും 5 സെക്കൻഡ് അങ്ങനെ ചെയ്തു നോക്കാൻ ആവശ്യപ്പെടുക.",
+        scriptBlocks: [
+          {
+            cue: "ശരീരം തരുന്ന 3 മുന്നറിയിപ്പുകൾ (Slide 18)",
+            note: "ഒരു ഡോക്ടറുടെ ഗൗരവത്തോടും കരുതലോടെയും സംസാരിക്കുക",
+            text: "നിങ്ങളുടെ ശരീരം തരുന്ന 3 വലിയ മുന്നറിയിപ്പുകൾ ശ്രദ്ധിക്കൂ:\n\n1. Text Neck Syndrome (27 kg ഭാരം!): നമ്മൾ നട്ടെല്ല് നിവർത്തി നേരെ നിൽക്കുമ്പോൾ തലയുടെ ഭാരം 4.5 മുതൽ 5 കിലോഗ്രാം വരെയാണ്. എന്നാൽ ഫോണിലേക്ക് നോക്കാൻ തല 60 ഡിഗ്രി താഴ്ത്തുമ്പോൾ കഴുത്തിലെ കശേരുക്കളിൽ അനുഭവപ്പെടുന്നത് കൃത്യം 27 കിലോഗ്രാം ഭാരമാണ്—അതായത് ഒരു 8 വയസ്സുള്ള കുട്ടിയെ നിങ്ങളുടെ കഴുത്തിന് മുകളിൽ കയറ്റി ഇരുത്തി നടക്കുന്നതിന് തുല്യം! ചെറുപ്രായത്തിൽ തന്നെ കഴുത്തുവേദനയും നട്ടെല്ല് വളയലും ഉണ്ടാക്കുന്നു. ഫോൺ താഴ്ത്തി വെച്ച് കുനിയുന്നതിന് പകരം കണ്ണിന്റെ നിരപ്പിലേക്ക് (Eye Level) ഉയർത്തി പിടിക്കുക!\n\n2. Digital Eye Strain & 20-20-20 Rule: സാധാരണ മനുഷ്യൻ മിനിറ്റിൽ 15–20 തവണ കണ്ണ് ചിമ്മാറുണ്ട്. എന്നാൽ സ്ക്രീനിലേക്ക് തുറിച്ചു നോക്കുമ്പോൾ അത് 5–7 തവണയായി കുറഞ്ഞ് Dry Eyes ഉണ്ടാകുന്നു. ഇതിനുള്ള മാന്ത്രിക നിയമമാണ് 20-20-20 റൂൾ: ഓരോ 20 മിനിറ്റിലും, 20 അടി അകലെയുള്ള ഒരു വസ്തുവിലേക്ക്, 20 സെക്കൻഡ് നേരം നോക്കുക!\n\n3. Melatonin Block: രാത്രി ഇരുട്ടാകുമ്പോൾ തലച്ചോറിലെ പീനിയൽ ഗ്രന്ഥി 'മെലറ്റോണിൻ' (Melatonin) എന്ന ഉറക്ക ഹോർമോൺ ഉത്പാദിപ്പിക്കും. എന്നാൽ ഫോണിൽ നിന്നുള്ള നീല വെളിച്ചം (Blue Light) മെലറ്റോണിൻ ഉത്പാദനം തടയുന്നു. ആഴത്തിലുള്ള ഉറക്കം (Deep Sleep) നഷ്ടപ്പെടുമ്പോൾ തലേദിവസം പഠിച്ച കാര്യങ്ങൾ തലച്ചോറിലെ Long-term Memory-യിലേക്ക് സേവ് ആകാതെ നഷ്ടപ്പെടുന്നു!"
+          }
+        ],
+        lifeRelation: "ഉറക്കം നഷ്ടപ്പെടുത്തി പഠിക്കുന്നത് വെള്ളത്തിൽ വരയ്ക്കുന്ന വര പോലെയാണ്; തലച്ചോറിലെ മെമ്മറി ഫയലുകൾ സേവ് ചെയ്യപ്പെടുന്നത് രാത്രിയിലെ ആഴത്തിലുള്ള ഉറക്കത്തിലാണ്."
+      },
+      {
+        id: "seg-7",
+        shortLabel: "Seg 07 • Mental Traps",
+        badge: "SEGMENT 07",
+        time: "24:00 – 28:00 Min",
+        slides: [19],
+        slideLabel: "Slide 19",
+        title: "മാനസികാരോഗ്യ വെല്ലുവിളികൾ (Silent Killers of the Mind)",
+        objective: "കൗമാരക്കാരുടെ ആത്മവിശ്വാസത്തെയും ഏകാഗ്രതയെയും സന്തോഷത്തെയും നിശബ്ദമായി കാർന്നുതിന്നുന്ന 4 മാനസിക കെണികളെ തുറന്നുകാട്ടുക.",
+        slideVisuals: [
+          "Slide 19: 4 Silent Mental Traps — 1. FOMO & Highlight Reel Trap (1% vs 100%) | 2. Reels Brain (Brain Rot) | 3. Phantom Vibration Syndrome | 4. Validation Addiction."
+        ],
+        stageAction: "ഒരു സെൽഫി എടുക്കാൻ ചിരിക്കുകയും, ക്ലിക്ക് കഴിഞ്ഞയുടൻ മുഖം വാടുകയും ചെയ്യുന്ന രംഗം ലഘുവായി അഭിനയിച്ചു കാണിക്കുക. ഉപദേശകന്റെ സ്വരമല്ല, കരുതലുള്ള ഒരു മെന്ററുടെ ശബ്ദത്തിൽ സംസാരിക്കുക.",
+        scriptBlocks: [
+          {
+            cue: "മനസ്സിന്റെ 4 സൈലന്റ് കില്ലറുകൾ (Slide 19)",
+            note: "ആർദ്രവും വ്യക്തവുമായ ശബ്ദത്തിൽ",
+            text: "ശരീരത്തിന് വേദന വന്നാൽ പെട്ടെന്ന് അറിയാം; പക്ഷേ മനസ്സിന് മുറിവേറ്റാൽ പുറമേ കാണാൻ കഴിയില്ല!\n\n1. FOMO & Highlight Reel Trap: സോഷ്യൽ മീഡിയയിൽ നിങ്ങൾ കാണുന്നത് മറ്റുള്ളവരുടെ ജീവിതത്തിലെ ഫിൽട്ടർ ചെയ്ത ഏറ്റവും മികച്ച 1% ഹൈലൈറ്റ് റീൽ മാത്രമാണ്. അതിന് പിന്നിലെ അവരുടെ സങ്കടങ്ങളോ പരീക്ഷാ പേടിയോ ആരും പോസ്റ്റ് ചെയ്യാറില്ല. മറ്റുള്ളവരുടെ 1% പോസ്റ്റുകളുമായി നിങ്ങളുടെ 100% യഥാർത്ഥ ജീവിതത്തെ (Behind-the-Scenes) താരതമ്യം ചെയ്യരുത്!\n\n2. Reels Brain (Brain Rot): 15-സെക്കൻഡ് വിഡിയോകൾ തുടർച്ചയായി സ്ക്രോൾ ചെയ്ത് ശീലിച്ച തലച്ചോറിന് ക്ഷമ നഷ്ടപ്പെടുന്നു. പിറ്റേന്ന് ഫിസിക്സിലെയോ കെമിസ്ട്രിയിലെയോ 10 മിനിറ്റ് നീളുന്ന ഒരു പാഠഭാഗം വായിക്കാൻ ഇരിക്കുമ്പോൾ തലച്ചോറിന് ഭയങ്കര ബോറടിയായി തോന്നുന്നു.\n\n3. Phantom Vibration Syndrome: ഒരൊറ്റ മെസ്സേജും വരാതിരുന്നിട്ടും പോക്കറ്റിൽ ഫോൺ വിറച്ചതായി തോന്നുന്ന അവസ്ഥ—നാഡീവ്യവസ്ഥ കടുത്ത ഡിജിറ്റൽ ഉത്കണ്ഠയിലായതിന്റെ (Digital Anxiety) ലക്ഷണമാണിത്.\n\n4. Validation Addiction: പോസ്റ്റ് ചെയ്ത ഫോട്ടോയ്ക്ക് എത്ര ലൈക്ക് കിട്ടി എന്ന് ഓരോ 5 മിനിറ്റിലും നോക്കി, ലൈക്കുകളുടെ എണ്ണത്തിൽ സ്വന്തം വില അളക്കുന്ന ശീലം. നിങ്ങളുടെ സന്തോഷത്തിന്റെ റിമോട്ട് കൺട്രോൾ അപരിചിതരുടെ കയ്യിൽ നൽകരുത്!"
+          }
+        ],
+        lifeRelation: "ഇൻസ്റ്റാഗ്രാമിലെ ലൈക്കുകൾക്ക് പരീക്ഷാ പേപ്പറിൽ ഒരു മാർക്ക് പോലും കൂട്ടിത്തരാൻ കഴിയില്ല; യഥാർത്ഥ ജീവിതത്തിൽ നിങ്ങളെ സ്നേഹിക്കുന്ന മാതാപിതാക്കളും നല്ല സുഹൃത്തുക്കളുമാണ് നിങ്ങളുടെ യഥാർത്ഥ കരുത്ത്."
+      },
+      {
+        id: "seg-8",
+        shortLabel: "Seg 08 • Cyber 1930",
+        badge: "SEGMENT 08",
+        time: "28:00 – 32:30 Min",
+        slides: [20],
+        slideLabel: "Slide 20",
+        title: "സൈബർ സുരക്ഷ, ഫിഷിംഗ് & സാമ്പത്തിക ചൂഷണം (1930 Protocol)",
+        objective: "കൗമാരക്കാരെ ലക്ഷ്യമിടുന്ന ആധുനിക സൈബർ ചതിക്കുഴികളെയും സാമ്പത്തിക തട്ടിപ്പുകളെയും തുറന്നുകാട്ടുക; അപകടത്തിൽ പെട്ടാൽ ഭയപ്പെടാതെ രക്ഷപ്പെടാനുള്ള 1930 എമർജൻസി പ്രോട്ടോക്കോൾ പഠിപ്പിക്കുക.",
+        slideVisuals: [
+          "Slide 20: 4 Defense Cards — 1. Phishing & Smishing Traps | 2. Economic Exploitation & Money Mule | 3. Digital Tattoo, EXIF & Deepfakes | 4. Golden Hour Emergency Protocol (1930 & 1098)."
+        ],
+        stageAction: "സുരക്ഷാ വിദഗ്ദ്ധന്റെ ഗൗരവത്തോടെ സംസാരിക്കുക. '1930' എന്ന ഹെൽപ്പ്‌ലൈൻ നമ്പർ ഹാളിലെ കുട്ടികളെക്കൊണ്ട് ഉറക്കെ പറയിപ്പിക്കുക.",
+        scriptBlocks: [
+          {
+            cue: "സൈബർ ചതിക്കുഴികളും Golden Hour രക്ഷാ പ്രോട്ടോക്കോളും (Slide 20)",
+            note: "വളരെ വ്യക്തമായും ഉറപ്പിച്ചും പറയുക",
+            text: "ഇന്റർനെറ്റ് ലോകത്തെ 4 വലിയ ചതിക്കുഴികൾ നിങ്ങൾ അറിഞ്ഞിരിക്കണം:\n\n1. Phishing & Smishing Traps: സൗജന്യ ഗെയിം സ്കിൻ (Free UC / Diamonds), Instagram Blue Tick, കോപ്പിറൈറ്റ് അപ്പീൽ എന്നീ വ്യാജ ലിങ്കുകളിൽ ക്ലിക്ക് ചെയ്ത് പാസ്‌വേഡോ OTP-യോ നൽകിയാൽ അടുത്ത നിമിഷം നിങ്ങളുടെ അക്കൗണ്ട് ഹാക്കർമാരുടെ കയ്യിലാകും!\n\n2. Economic Exploitation & Money Mule: 'യൂട്യൂബ് വീഡിയോ ലൈക്ക് ചെയ്താൽ ദിവസം ₹2,000 സമ്പാദിക്കാം' എന്ന Task Scams-ൽ വീഴരുത്. അതിലും ഗുരുതരമാണ് Money Mule—ചെറിയ കമ്മീഷനായി സ്വന്തം ബാങ്ക് അക്കൗണ്ടിലേക്കോ UPI ഐഡിയിലേക്കോ മറ്റുള്ളവരുടെ പണം സ്വീകരിച്ച് കൈമാറരുത്. സൈബർ തട്ടിപ്പുകാരുടെ കള്ളപ്പണം നിങ്ങളുടെ അക്കൗണ്ടിലൂടെ മാറ്റിയാൽ പോലീസ് കേസിൽ നിങ്ങളായിരിക്കും ഒന്നാം പ്രതി!\n\n3. Digital Tattoo, EXIF Data & Deepfakes: ഇന്റർനെറ്റ് ഒരു Digital Tattoo ആണ്—'View Once' സുരക്ഷിതമല്ല; മറ്റൊരു ഫോൺ ഉപയോഗിച്ച് ഫോട്ടോ എടുക്കാം. ഫോട്ടോകൾക്കൊപ്പം വീടിന്റെ GPS ലൊക്കേഷനും (EXIF Data) പുറത്തുപോകും. AI Deepfake ഭീഷണി ഒഴിവാക്കാൻ പ്രൊഫൈലുകൾ എപ്പോഴും Private ആക്കുക.\n\n4. Golden Hour Emergency Protocol: ഏതെങ്കിലും തട്ടിപ്പോ ഭീഷണിയോ ഉണ്ടായാൽ 3 കാര്യങ്ങൾ ചെയ്യുക:\n• Zero Payment: ഭീഷണിക്ക് വഴങ്ങി ഒരിക്കലും പണം നൽകരുത്.\n• Save Evidence: ചാറ്റുകളുടെ Screenshots, Links, Transaction ID സൂക്ഷിക്കുക.\n• Call Helpline: സാമ്പത്തിക തട്ടിപ്പ് നടന്ന് ആദ്യ മണിക്കൂറിനുള്ളിൽ (Golden Hour) 1930 (National Cyber Crime Helpline) അല്ലെങ്കിൽ 1098 (Childline) വിളിക്കുക!"
+          }
+        ],
+        lifeRelation: "രാത്രി അപരിചിതൻ വാതിലിൽ മുട്ടിയാൽ നമ്മൾ തുറക്കാറില്ല; എന്നാൽ സോഷ്യൽ മീഡിയയിൽ അപരിചിതരുടെ റിക്വസ്റ്റുകൾ സ്വീകരിച്ച് സ്വകാര്യ ചിത്രങ്ങൾ പങ്കുവെക്കുന്നത് വീടിന്റെ വാതിൽ മലർക്കെ തുറന്നിടുന്നതിന് തുല്യമാണ്."
+      },
+      {
+        id: "seg-9",
+        shortLabel: "Seg 09 • Gaming",
+        badge: "SEGMENT 09",
+        time: "32:30 – 36:30 Min",
+        slides: [21],
+        slideLabel: "Slide 21",
+        title: "ഓൺലൈൻ ഗെയിമിംഗ് & സോഷ്യൽ മീഡിയ (Use vs. Abuse)",
+        objective: "അമിത ഗെയിമിംഗ് എങ്ങനെയാണ് WHO അംഗീകരിച്ച മാനസികാരോഗ്യ പ്രശ്നമായി മാറുന്നത് എന്ന് ബോധ്യപ്പെടുത്തുക; സോഷ്യൽ മീഡിയയുടെ ശരിയായ ഉപയോഗവും ദുരുപയോഗവും വേർതിരിച്ചു കാണിക്കുക.",
+        slideVisuals: [
+          "Slide 21: 3 Columns — 1. WHO Gaming Disorder & Loot Boxes | 2. Healthy Use (Master) | 3. Social Media Abuse (Cyberbullying, Fake News, Digital Footprint)."
+        ],
+        stageAction: "ഗെയിം കൺട്രോളർ പിടിക്കുന്ന ആക്ഷൻ കാണിച്ചുകൊണ്ട് ചോദിക്കുക: 'നിങ്ങൾ ഗെയിം കളിക്കുകയാണോ, അതോ ഗെയിം നിങ്ങളെ വെച്ച് കളിക്കുകയാണോ?'",
+        scriptBlocks: [
+          {
+            cue: "ഗെയിമിംഗ് ഡിസോർഡർ & സോഷ്യൽ മീഡിയ Use vs. Abuse (Slide 21)",
+            note: "കുട്ടികളുടെ ആത്മാഭിമാനത്തെ ഉണർത്തുന്ന ശൈലിയിൽ",
+            text: "ഗെയിം കളിക്കുന്നത് ഒരിക്കലും തെറ്റല്ല; പക്ഷേ എപ്പോഴാണ് നമ്മൾ ഗെയിം കളിക്കുന്നതിന് പകരം ഗെയിം നമ്മളെ വെച്ച് കളിക്കാൻ തുടങ്ങുന്നത്? ലോകാരോഗ്യ സംഘടന (WHO) ഔദ്യോഗികമായി അംഗീകരിച്ച രോഗാവസ്ഥയാണ് 'ഗെയിമിംഗ് ഡിസോർഡർ' (Gaming Disorder)! അമിത ഡോപമൈൻ കാരണം പഠനത്തോട് വിരക്തി, അമ്മ ഭക്ഷണം കഴിക്കാൻ വിളിച്ചാൽ പോലും പൊട്ടിത്തെറിക്കുന്ന അമിത ദേഷ്യം (Aggression), ഉറക്കമില്ലായ്മ എന്നിവ ഉണ്ടാകുന്നു. ഗെയിമുകളിലെ 'Loot Boxes', 'Lucky Spins' എന്നിവ കൗമാരക്കാരിൽ ചൂതാട്ട സ്വഭാവം (Gambling Addiction) വളർത്തുന്നു.\n\nസോഷ്യൽ മീഡിയ ഒരു കത്തി പോലെയാണ്:\n• Healthy Use (Master): Coding, Language, Art പോലുള്ള പുതിയ സ്കില്ലുകൾ പഠിക്കുക, നിങ്ങളുടെ സർഗ്ഗാത്മക കഴിവുകൾ ലോകത്തിന് മുന്നിൽ അവതരിപ്പിക്കുക.\n• Social Media Abuse (Trap): വ്യാജ അക്കൗണ്ടിന് പിന്നിൽ ഒളിച്ചിരുന്ന് മറ്റുള്ളവരെ പരിഹസിക്കുന്ന Cyberbullying & Trolling ജാമ്യമില്ലാത്ത ക്രിമിനൽ കുറ്റമാണ്! വ്യാജവാർത്തകൾ ഫോർവേഡ് ചെയ്താൽ നിയമ ഉത്തരവാദിത്തം നിങ്ങൾക്കാണ്. 16-ാം വയസ്സിൽ ഇട്ട മോശം കമന്റുകൾ 22-ാം വയസ്സിൽ നിങ്ങളുടെ സ്വപ്ന ജോലിയും വിദേശ അഡ്മിഷനും നശിപ്പിക്കുന്ന മോശം Digital Footprint ആയി മാറും!"
+          }
+        ],
+        lifeRelation: "Empathy Behind the Screen & Ground Play: വൈകുന്നേരം ഗ്രൗണ്ടിൽ കളിക്കുമ്പോൾ സന്തോഷ ഹോർമോണായ Endorphins ലഭിക്കുന്നു. സ്ക്രീനിന് അപ്പുറമുള്ളതും വികാരങ്ങളുള്ള ഒരു മനുഷ്യനാണ് എന്ന ബോധം (Digital Empathy) എപ്പോഴും ഉണ്ടായിരിക്കണം."
+      },
+      {
+        id: "seg-10",
+        shortLabel: "Seg 10 • AI Bicycle",
+        badge: "SEGMENT 10",
+        time: "36:30 – 39:00 Min",
+        slides: [22],
+        slideLabel: "Slide 22",
+        title: "ആർട്ടിഫിഷ്യൽ ഇന്റലിജൻസ് (AI) — സൈക്കിൾ vs. വീൽചെയർ",
+        objective: "AI-യെ സ്വന്തം ബുദ്ധിശക്തി നഷ്ടപ്പെടുത്തുന്ന വീൽചെയർ ആക്കാതെ, ചിന്തകൾക്ക് വേഗത കൂട്ടുന്ന സൈക്കിൾ ആക്കി മാറ്റാൻ 3 ഗോൾഡൻ പ്രോംപ്റ്റ് നിയമങ്ങൾ പഠിപ്പിക്കുക.",
+        slideVisuals: [
+          "Slide 22: AI: Bicycle for the Mind, Not a Wheelchair! — Left: The Lazy Way (Wheelchair) | Right: 3 Golden Prompt Rules (Bicycle Mode) | Quote: \"Never let AI do your thinking. Let AI sharpen your thinking!\""
+        ],
+        stageAction: "ക്ലാസിൽ എത്ര പേർ ChatGPT അല്ലെങ്കിൽ Gemini ഉപയോഗിക്കാറുണ്ട് എന്ന് കൈ ഉയർത്താൻ ആവശ്യപ്പെടുക. ചിരിച്ചുകൊണ്ട് സൈക്കിൾ vs വീൽചെയർ ഉദാഹരണം പറയുക.",
+        scriptBlocks: [
+          {
+            cue: "സൈക്കിൾ vs. വീൽചെയർ & 3 ഗോൾഡൻ പ്രോംപ്റ്റ് നിയമങ്ങൾ (Slide 22)",
+            note: "ഫ്യൂച്ചർ ടെക് മെന്ററുടെ ആവേശത്തോടെ",
+            text: "അടുത്ത 5 വർഷത്തിനുള്ളിൽ AI നിങ്ങളുടെ ജോലി തട്ടിയെടുക്കാൻ പോകുന്നില്ല; പക്ഷേ AI ശരിയായി ഉപയോഗിക്കാൻ അറിയുന്ന ഒരാൾ, അത് അറിയാത്ത നിങ്ങളുടെ ജോലി തട്ടിയെടുക്കും! എന്നാൽ എങ്ങനെയാണ് AI ഉപയോഗിക്കേണ്ടത്? 'സൈക്കിൾ vs വീൽചെയർ തത്വം' ഓർക്കുക:\n\nസൈക്കിൾ നിങ്ങൾക്ക് വേണ്ടി തനിയെ ഓടില്ല; നിങ്ങൾ പെഡൽ ചവിട്ടുമ്പോൾ പത്തിരട്ടി വേഗത തരും—കാലുകൾക്ക് ശക്തി കൂടും. എന്നാൽ ആരോഗ്യമുള്ള ഒരാൾ എപ്പോഴും വീൽചെയറിൽ ഇരുന്നാൽ കാലുകളുടെ പേശികൾ തളർന്നുപോകും! AI നിങ്ങളുടെ തലച്ചോറിനുള്ള സൈക്കിൾ ആകണം!\n\nഎല്ലാ ഹോംവർക്കും കോപ്പി-പേസ്റ്റ് ചെയ്താൽ പരീക്ഷാ ഹാളിൽ തലച്ചോറ് ശൂന്യമാകും. കൂടാതെ AI തെറ്റായ വിവരങ്ങൾ ആത്മവിശ്വാസത്തോടെ പറയുന്ന 'AI Hallucination' ശ്രദ്ധിക്കണം. സ്വന്തം ഫോട്ടോകൾ അപരിചിത AI ആപ്പുകളിൽ നൽകരുത്.\n\nഇന്ന് മുതൽ ഈ 3 Golden Prompt Rules പാലിക്കുക:\n1. \"എഴുതിത്തരൂ\" എന്നല്ല, \"തിരുത്തിത്തരൂ\": ഞാൻ എഴുതിയ ഉപന്യാസത്തിലെ തെറ്റുകൾ ചൂണ്ടിക്കാണിക്കാൻ ചോദിക്കുക.\n2. ഉത്തരമല്ല, സൂചന (Hint): നേരിട്ട് ഉത്തരം ചോദിക്കാതെ പ്രോബ്ലം ചെയ്യാനുള്ള ഘട്ടങ്ങൾ ചോദിക്കുക.\n3. Fact-Check: SCERT / NCERT പാഠപുസ്തകവുമായി ഒത്തുനോക്കി ഉറപ്പുവരുത്തുക!"
+          }
+        ],
+        lifeRelation: "ജിമ്മിൽ പോയിട്ട് ട്രെയിനറോട് 'എനിക്ക് വേണ്ടി ഈ ഡംബെൽ ഒന്ന് ഉയർത്താമോ?' എന്ന് ചോദിച്ചാൽ ട്രെയിനർക്ക് മസിൽ വരും, നിങ്ങൾക്ക് ഒന്നും കിട്ടില്ല! AI-യെക്കൊണ്ട് ഹോംവർക്ക് ചെയ്യിക്കുന്നതും അതുപോലെയാണ്."
+      },
+      {
+        id: "seg-10b",
+        shortLabel: "Seg 10B • Career",
+        badge: "SEGMENT 10B",
+        time: "39:00 – 41:30 Min",
+        slides: [23],
+        slideLabel: "Slide 23",
+        title: "ഇന്റർനെറ്റ്, AI, വിദ്യാഭ്യാസം & ഭാവി കരിയർ (Education & Career Launchpad)",
+        objective: "സ്മാർട്ട്‌ഫോണിനെയും ഇന്റർനെറ്റിനെയും വെറും വിനോദത്തിനപ്പുറം, പ്ലസ് വൺ/പ്ലസ് ടു കാലഘട്ടത്തിൽ തന്നെ സ്വന്തം പഠന നിലവാരം ഉയർത്താനും ഭാവി കരിയറുകൾക്ക് തയ്യാറെടുക്കാനുമുള്ള ഏറ്റവും വലിയ നിക്ഷേപമായി മാറ്റുക.",
+        slideVisuals: [
+          "Slide 23: Internet & AI: Your Launchpad to Future Careers! 🎓 — 1. Pocket University (SWAYAM, NPTEL, DIKSHA, OLabs, Coursera) | 2. The 2026 Career Shift (India Skills Report 2026 & Proof-of-Work) | 3. 4 Human Superpowers."
+        ],
+        stageAction: "ഒരു കരിയർ സ്ട്രാറ്റജിസ്റ്റിന്റെ ആവേശത്തോടെ സംസാരിക്കുക. Consumer-ൽ നിന്ന് Creator ആകാനുള്ള ആഹ്വാനം ഉറപ്പിച്ചു പറയുക.",
+        scriptBlocks: [
+          {
+            cue: "പോക്കറ്റിലെ സർവ്വകലാശാല, 2026 കരിയർ മാറ്റം & 4 മനുഷ്യ സൂപ്പർ പവറുകൾ (Slide 23)",
+            note: "ആവേശത്തോടെയും വ്യക്തതയോടെയും അവതരിപ്പിക്കുക",
+            text: "ഇപ്പോൾ നിങ്ങളുടെ പോക്കറ്റിലിരിക്കുന്ന ഈ ഇന്റർനെറ്റ് കണക്ഷൻ ശരിയായി ഉപയോഗിച്ചാൽ നിങ്ങൾക്ക് എന്ത് നേടാൻ കഴിയും എന്നറിയാമോ? 15 വർഷം മുൻപ് ഒരു സാധാരണ കുടുംബത്തിലെ കുട്ടിക്ക് IIT പ്രൊഫസർമാരുടെ ക്ലാസുകൾ കേൾക്കുക എന്നത് ഒരു സ്വപ്നം മാത്രമായിരുന്നു. എന്നാൽ ഇന്ന് ലോകത്തിലെ ഏറ്റവും മികച്ച സർവ്വകലാശാല നിങ്ങളുടെ പഠനമുറിയിൽ സൗജന്യമായി തുറന്നിരിക്കുകയാണ്!\n\n1. Pocket University (Free): SWAYAM & NPTEL വഴി IIT / IISc പ്രൊഫസർമാരുടെ കോഴ്സുകൾ സൗജന്യമായി പഠിക്കാനും സർട്ടിഫിക്കറ്റ് നേടാനും സാധിക്കും. DIKSHA, OLabs & Khan Academy വഴി പ്ലസ് വൺ / പ്ലസ് ടു സയൻസ് പ്രാക്ടിക്കലുകൾ 3D-യിൽ ചെയ്തു നോക്കാം. Coursera & Skill India വഴി പുതിയ സ്കില്ലുകൾ പഠിക്കാം.\n\n2. The 2026 Career Shift: India Skills Report 2026 പ്രകാരം വെറും ഡിഗ്രി സർട്ടിഫിക്കറ്റ് മാത്രം പോരാ; പ്രായോഗിക AI & Problem-Solving സ്കില്ലുകൾ അനിവാര്യമാണ്. ഇന്ന് കമ്പനികൾ ചോദിക്കുന്നത് 'നിങ്ങൾക്ക് എത്ര മാർക്കുണ്ട്?' എന്ന് മാത്രമല്ല, 'നിങ്ങൾ എന്ത് നിർമ്മിച്ചു? (Show me your Proof-of-Work & LinkedIn Portfolio!)' എന്നാണ്!\n\n3. 4 Human Superpowers: AI എത്ര വളർന്നാലും പകരമാകാൻ കഴിയാത്ത 4 കഴിവുകൾ നിങ്ങൾ വളർത്തിയെടുക്കണം: (1) Critical Thinking, (2) Creativity, (3) Communication & Leadership, (4) Empathy & Ethics.\n\nസ്ക്രീനിലെ വെറുമൊരു ഉപഭോക്താവ് (Consumer) ആകാതെ, സ്വന്തം ഭാവിയുടെ നിർമ്മാതാവ് (Creator) ആകൂ!"
+          }
+        ],
+        lifeRelation: "Consumer vs. Creator: റീൽസ് കണ്ട് 2 മണിക്കൂർ കളയുമ്പോൾ നിങ്ങൾ വെറുമൊരു ഉപഭോക്താവ് മാത്രമാണ്; എന്നാൽ അതേ സമയം കൊണ്ട് NPTEL കോഴ്സോ ഒരു പ്രോജക്റ്റോ ചെയ്യുമ്പോൾ നിങ്ങൾ ഭാവിയിലെ നേതാവായി മാറുന്നു."
+      },
+      {
+        id: "seg-11",
+        shortLabel: "Seg 11 • 1-2-3 Hacks",
+        badge: "SEGMENT 11",
+        time: "41:30 – 43:30 Min",
+        slides: [24],
+        slideLabel: "Slide 24",
+        title: "അൽഗോരിതത്തെ തോൽപ്പിക്കാൻ 3 പ്രായോഗിക ആയുധങ്ങൾ & ശീലങ്ങൾ",
+        objective: "'ഫോൺ പൂർണ്ണമായി ഉപേക്ഷിക്കൂ' എന്ന അപ്രായോഗിക ഉപദേശത്തിന് പകരം, ഇന്നുതന്നെ ഫോണിൽ സെറ്റ് ചെയ്യാൻ കഴിയുന്ന 3 സൈക്കോളജിക്കൽ ഹാക്കുകളും 4 ഡിജിറ്റൽ ശീലങ്ങളും നൽകുക.",
+        slideVisuals: [
+          "Slide 24: 3 Practical Weapons to Defeat the Algorithm ⚔️ + '⚫⚪ Test Grayscale Mode Live!' Interactive Demo Button + Digital-Free Zones, Sleep Rule & Offline Hobby."
+        ],
+        stageAction: "പ്രസന്റേഷനിലെ 'Test Grayscale Mode Live!' ബട്ടൺ ക്ലിക്ക് ചെയ്ത് പ്രൊജക്ടർ സ്ക്രീൻ മുഴുവൻ Black & White ആക്കി കാണിക്കുക! വിരലുകൾ ഉയർത്തി 1, 2, 3 എന്ന് എണ്ണിക്കാണിക്കുക.",
+        scriptBlocks: [
+          {
+            cue: "ദി 1-2-3 ആന്റി-അൽഗോരിതം ഫോർമുല & നിത്യശീലങ്ങൾ (Slide 24)",
+            note: "Grayscale Mode ലൈവ് ഡെമോ കാണിച്ചുകൊണ്ട്",
+            text: "സിലിക്കൺ വാലി അൽഗോരിതങ്ങളെ തിരിച്ചു ഹാക്ക് ചെയ്യാനുള്ള 3 പ്രായോഗിക ആയുധങ്ങൾ (The 1-2-3 Formula) ഇതാ:\n\n1️⃣ Weapon #1 — 1-Color Shift (Grayscale): Settings > Accessibility > Color Filters > Grayscale ഓൺ ആക്കുക! നിറങ്ങളുടെ ആകർഷണം നഷ്ടപ്പെടുമ്പോൾ ഇൻസ്റ്റാഗ്രാമും ഗെയിമുകളും തലച്ചോറിന് പെട്ടെന്ന് ബോറടിക്കും. നിങ്ങളുടെ സ്ക്രീൻ ടൈം 40% – 50% കുറയും!\n\n2️⃣ Weapon #2 — 2-Meter Friction Rule: യൂണിവേഴ്സിറ്റി ഓഫ് ടെക്സസ് (UT Austin) പഠനപ്രകാരം മേശപ്പുറത്ത് കമഴ്ത്തി വെച്ച ഫോൺ പോലും തലച്ചോറിന്റെ 15% ബുദ്ധിശക്തി ചോർത്തും! പഠിക്കുമ്പോൾ ഫോൺ കുറഞ്ഞത് 2 മീറ്റർ അകലെ മറ്റൊരു മുറിയിലോ അലമാരയിലോ വെക്കുക!\n\n3️⃣ Weapon #3 — 3-Window Batching: ദിവസത്തിൽ 3 നിശ്ചിത സമയങ്ങളിൽ മാത്രം (2:00 PM, 6:00 PM, 9:00 PM) മെസ്സേജുകളും റീൽസുകളും കാണുക. അനാവശ്യ നോട്ടിഫിക്കേഷനുകൾ ഓഫ് ചെയ്യുക.\n\nഇതോടൊപ്പം: പഠന മേശ, ബെഡ്‌റൂം, ഭക്ഷണ മേശ എന്നിവ Digital-Free Zones ആക്കുക; ഉറങ്ങുന്നതിന് 1 മണിക്കൂർ മുൻപ് സ്ക്രീൻ മാറ്റിവെക്കുക; ബോറടിക്കുമ്പോൾ വര, വായന, നടത്തം, നേരിട്ടുള്ള സൗഹൃദം എന്നിവ ശീലമാക്കുക!"
+          }
+        ],
+        lifeRelation: "Environment Design over Willpower: ആത്മനിയന്ത്രണം എന്നത് ഒരു ബാറ്ററി പോലെയാണ്—വൈകുന്നേരമാകുമ്പോഴേക്കും അത് തീരും. ഫോൺ കൺമുന്നിൽ വെച്ച് വാശി പിടിക്കുന്നതിനേക്കാൾ ബുദ്ധി ഫോൺ മറ്റൊരു മുറിയിൽ വെച്ച് ചുറ്റുപാട് മാറ്റുന്നതാണ്."
+      },
+      {
+        id: "seg-12",
+        shortLabel: "Seg 12 • Finale",
+        badge: "SEGMENT 12",
+        time: "43:30 – 45:00 Min",
+        slides: [25],
+        slideLabel: "Slide 25",
+        title: "ദി പ്രൊട്ടഗോണിസ്റ്റ് പ്രോട്ടോക്കോൾ & സമാപന മാനിഫെസ്റ്റോ (Grand Finale)",
+        objective: "ഗെയിമിംഗ് ഭാഷയിലൂടെ (NPC vs. Main Character) കൗമാരക്കാരുടെ ആത്മാഭിമാനത്തെ ഉണർത്തി 72-മണിക്കൂർ ചലഞ്ചിലേക്ക് ക്ഷണിച്ച്, ഹാളിൽ വലിയൊരു ഊർജ്ജവും കയ്യടിയും നിറച്ച് സെഷൻ അവസാനിപ്പിക്കുക.",
+        slideVisuals: [
+          "Slide 25: Are You an NPC or the Main Character? 👑 + 3 Quests (Golden Hour, Friction Lock, Eye-Contact) + Dark Manifesto Banner: BE SEEN, NOT JUST SCREENED!"
+        ],
+        stageAction: "വേദിയുടെ ഏറ്റവും മുൻനിരയിലേക്ക് വരിക. ശബ്ദത്തിൽ ആത്മവിശ്വാസവും ആവേശവും നിറയ്ക്കുക. അവസാന വരികൾ പറയുമ്പോൾ ഹാളിലെ എല്ലാവരുടെയും കണ്ണുകളിലേക്ക് നോക്കി, കൈ ഉയർത്തി അഭിവാദ്യം ചെയ്യുക.",
+        scriptBlocks: [
+          {
+            cue: "NPC vs. Main Character & 72-Hour Protagonist Quest (Slide 25)",
+            note: "വേദിയുടെ മുൻനിരയിലേക്ക് വന്ന്, ഊർജ്ജസ്വലമായ ശബ്ദത്തിൽ",
+            text: "പ്രിയപ്പെട്ട കൂട്ടുകാരേ, നമ്മൾ ഈ 45 മിനിറ്റിന്റെ അവസാന നിമിഷങ്ങളിലേക്ക് കടക്കുകയാണ്. എനിക്ക് നിങ്ങളോട് ഒരൊറ്റ ചോദ്യം മാത്രമേ ചോദിക്കാനുള്ളൂ...\n\nവീഡിയോ ഗെയിമുകളിൽ രണ്ട് തരം കഥാപാത്രങ്ങളുണ്ട്:\nഒന്ന്: NPCs (Non-Playable Characters) — ഗെയിം ഡെവലപ്പർ പ്രോഗ്രാം ചെയ്ത വഴികളിലൂടെ മാത്രം നടക്കുന്ന, സ്വന്തമായി ഒരു തീരുമാനവുമെടുക്കാൻ കഴിയാത്ത വെറും പാവകൾ!\nരണ്ട്: Main Character / Protagonist (നായകൻ) — കളി നിയന്ത്രിക്കുന്ന, വെല്ലുവിളികളെ നേരിടുന്ന, സ്വന്തം കഥ എഴുതുന്ന യഥാർത്ഥ ഹീറോ!\n\nസിലിക്കൺ വാലിയിലെ ഏതോ എഞ്ചിനീയർ പ്രോഗ്രാം ചെയ്ത അൽഗോരിതത്തിനനുസരിച്ച് റീൽസ് സ്ക്രോൾ ചെയ്ത്, ആരോ ഉണ്ടാക്കിയ ട്രെൻഡുകൾക്ക് പിന്നാലെ ഓടുന്ന നിങ്ങൾ സ്വന്തം ജീവിതത്തിലെ Main Character ആണോ, അതോ അവരുടെ സെർവറിലെ വെറുമൊരു ഡിജിറ്റൽ NPC ആണോ?\n\nനാളെ രാവിലെ മുതൽ അടുത്ത 72 മണിക്കൂർ (3 ദിവസം) നിങ്ങൾക്കായി ഞാൻ ഒരു ചലഞ്ച് തരികയാണ്—'ദി പ്രൊട്ടഗോണിസ്റ്റ് ക്വസ്റ്റ്':\n🌅 Quest 1 — Golden Hour: രാവിലെ ഉറക്കമുണർന്ന് ആദ്യത്തെ 60 മിനിറ്റ് ഫോൺ തൊടരുത്!\n🔒 Quest 2 — Friction Lock: പഠിക്കാൻ ഇരിക്കുമ്പോൾ ഫോൺ മറ്റൊരു മുറിയിൽ ലോക്ക് ചെയ്തു വെക്കുക.\n👥 Quest 3 — Eye-Contact: ദിവസവും കുറഞ്ഞത് 15 മിനിറ്റ് സ്ക്രീനില്ലാതെ അച്ഛനോടോ അമ്മയോടോ കൂട്ടുകാരോടോ നേരിട്ട് കണ്ണിൽ നോക്കി സംസാരിക്കുക!"
+          },
+          {
+            cue: "ക്ലൈമാക്സ് മാനിഫെസ്റ്റോ (Grand Finale Closing)",
+            note: "കൈ ഉയർത്തി, ഹാൾ മുഴുവൻ മുഴങ്ങുന്ന ആവേശത്തോടെ",
+            text: "ഓർത്തോളൂ... അടുത്ത പത്ത് വർഷം കഴിയുമ്പോൾ ഈ ലോകത്ത് രണ്ടുതരം മനുഷ്യരേ ഉണ്ടാവുകയുള്ളൂ: അൽഗോരിതങ്ങളെ നിയന്ത്രിക്കുന്നവരും, അൽഗോരിതങ്ങളാൽ നിയന്ത്രിക്കപ്പെടുന്നവരും!\n\nനിങ്ങളുടെ കൈയിലെ സ്മാർട്ട്‌ഫോൺ ലോകം കീഴടക്കാനുള്ള മികച്ചൊരു ആയുധമാകണം (Weapon), അല്ലാതെ നിങ്ങളെ കെട്ടിയിടുന്ന ചങ്ങലയാകരുത് (Leash)! മറ്റുള്ളവരുടെ ജീവിതം കണ്ട് ഗാലറിയിലിരുന്ന് കയ്യടിക്കുന്ന വെറുമൊരു കാഴ്ചക്കാരനാകാതെ, സ്വന്തം പരീക്ഷയിലും ഗ്രൗണ്ടിലും ജീവിതത്തിലും കളം നിറയുന്ന താരമാകൂ!\n\nBreak out of the 6-inch box!\nസ്വൈപ്പിൽ തീരുന്ന വെറുമൊരു ഫോളോവർ ആകരുത്... യഥാർത്ഥ ജീവിതത്തിൽ തിളങ്ങുന്ന നായകനാകൂ!\nBE SEEN, NOT JUST SCREENED!\n\nതാങ്ക് യു, വിഷ് യു ഓൾ ദ ബെസ്റ്റ്!"
+          }
+        ],
+        lifeRelation: "72-Hour Action Commitment: അറിവ് പ്രവർത്തിയിലേക്ക് മാറുമ്പോഴാണ് മാറ്റമുണ്ടാകുന്നത്. 3 ദിവസത്തെ ഈ ചെറിയ ചലഞ്ച് അവരുടെ ആത്മവിശ്വാസം (Self-Efficacy) തിരിച്ചുപിടിക്കാൻ സഹായിക്കുന്നു."
+      }
+    ];
+
+    // ==================== STATE & PERSISTENCE ====================
+    const STORAGE_KEY_DONE = 's2s_teleprompter_done_v1';
+    const STORAGE_KEY_FONT = 's2s_teleprompter_font_v1';
+
+    let completedSegments = new Set(JSON.parse(localStorage.getItem(STORAGE_KEY_DONE) || '[]'));
+    let activeSegmentIndex = 0; // Used in Single Focus mode and bottom indicator
+    let isSingleFocusMode = false;
+    let searchQuery = '';
+
+    // Timer State (45 minutes = 2700 seconds)
+    const TOTAL_SESSION_SECONDS = 45 * 60;
+    let elapsedSeconds = 0;
+    let isTimerRunning = false;
+    let isCountdownMode = true;
+    let timerInterval = null;
+
+    // Wake Lock State
+    let wakeLockSentinel = null;
+
+    // ==================== INITIALIZATION ====================
+    function initApp() {
+      populateSlideJumpDropdown();
+      renderSegmentPills();
+      renderSegments();
+      updateProgressUI();
+      updateBottomBar();
+
+      const savedFont = localStorage.getItem(STORAGE_KEY_FONT) || 'md';
+      setFontScale(savedFont);
+    }
+
+    function populateSlideJumpDropdown() {
+      const select = document.getElementById('slideJumpSelect');
+      const slideTitles = [
+        "1: Title — SCREEN TO SEEN",
+        "2: Seg 1 — Who Wants to Leave First?",
+        "3: Seg 2 — Challenge 1 (3-Line Puzzle)",
+        "4: Seg 2 — Physical Thickness Insight",
+        "5: Seg 3 — Challenge 2 (4-Line Box-Break)",
+        "6: Seg 3 — 6-Inch Box & Welcome",
+        "7: Seg 4 — Stand-Up Reality Poll (Top 5)",
+        "8: Seg 4 — Reality Poll Verdict",
+        "9: Seg 4 — Bat & Ball Reaction Trap",
+        "10: Seg 4 — System 1 vs. System 2",
+        "11: Seg 4 — Stroop Effect Experiment",
+        "12: Seg 4 — Cognitive Hijacking",
+        "13: Seg 5 — Silicon Valley 5 Truths",
+        "14: Seg 5 — The Attention Economy",
+        "15: Seg 5 — The Pocket Casino",
+        "16: Seg 5 — Multitasking & 23m 15s Residue",
+        "17: Seg 5 — Global Stats & TikTok Ban",
+        "18: Seg 6 — Physical Health (27kg / 20-20-20)",
+        "19: Seg 7 — Mental Health (FOMO / Brain Rot)",
+        "20: Seg 8 — Cyber Security & 1930 Protocol",
+        "21: Seg 9 — Gaming & Social Media",
+        "22: Seg 10 — AI: Bicycle vs. Wheelchair",
+        "23: Seg 10B — Internet, AI & Future Career",
+        "24: Seg 11 — 3 Anti-Algorithm Weapons",
+        "25: Seg 12 — Protagonist Protocol Finale"
+      ];
+      slideTitles.forEach((label, idx) => {
+        const opt = document.createElement('option');
+        opt.value = idx + 1;
+        opt.textContent = `Slide ${label}`;
+        select.appendChild(opt);
+      });
+    }
+
+    // ==================== RENDER SEGMENT PILLS ====================
+    function renderSegmentPills() {
+      const nav = document.getElementById('segmentPillsNav');
+      const allBtn = `
+        <button onclick="selectSegmentTab(-1)" id="pill-all" class="px-3 py-1.5 rounded-xl text-xs font-extrabold whitespace-nowrap transition ${!isSingleFocusMode ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'}">
+          All (13)
+        </button>
+      `;
+
+      const segBtns = MASTER_SEGMENTS.map((seg, idx) => {
+        const isDone = completedSegments.has(seg.id);
+        const isSelected = isSingleFocusMode && activeSegmentIndex === idx;
+        let cls = 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100';
+        if (isSelected) {
+          cls = 'bg-blue-600 text-white border-blue-600 shadow-sm';
+        } else if (isDone) {
+          cls = 'bg-emerald-50 text-emerald-800 border-emerald-300';
+        }
+        return `
+          <button onclick="selectSegmentTab(${idx})" id="pill-${seg.id}" class="px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition flex items-center gap-1 ${cls}">
+            ${isDone ? '<span>✓</span>' : ''}
+            <span>${seg.shortLabel}</span>
+          </button>
+        `;
+      }).join('');
+
+      nav.innerHTML = allBtn + segBtns;
+    }
+
+    function selectSegmentTab(idx) {
+      if (idx === -1) {
+        isSingleFocusMode = false;
+        document.getElementById('viewModeBtn').textContent = '📖 Single Focus';
+        renderSegmentPills();
+        renderSegments();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        activeSegmentIndex = idx;
+        if (isSingleFocusMode) {
+          renderSegmentPills();
+          renderSegments();
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+          renderSegmentPills();
+          updateBottomBar();
+          const targetEl = document.getElementById(MASTER_SEGMENTS[idx].id);
+          if (targetEl) {
+            const headerOffset = 122;
+            const elementPosition = targetEl.getBoundingClientRect().top + window.scrollY;
+            window.scrollTo({ top: elementPosition - headerOffset, behavior: 'smooth' });
+          }
+        }
+      }
+    }
+
+    function toggleViewMode() {
+      isSingleFocusMode = !isSingleFocusMode;
+      document.getElementById('viewModeBtn').textContent = isSingleFocusMode ? '📜 Show All 13' : '📖 Single Focus';
+      renderSegmentPills();
+      renderSegments();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function jumpToSlide(slideNumStr) {
+      const slideNum = parseInt(slideNumStr, 10);
+      if (!slideNum) return;
+      const segIdx = MASTER_SEGMENTS.findIndex(s => s.slides.includes(slideNum));
+      if (segIdx !== -1) {
+        activeSegmentIndex = segIdx;
+        renderSegmentPills();
+        renderSegments();
+        setTimeout(() => {
+          const el = document.getElementById(MASTER_SEGMENTS[segIdx].id);
+          if (el) {
+            const headerOffset = 122;
+            const top = el.getBoundingClientRect().top + window.scrollY - headerOffset;
+            window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+          }
+        }, 50);
+        showToast(`Jumped to Slide ${slideNum} (${MASTER_SEGMENTS[segIdx].badge})`);
+      }
+      document.getElementById('slideJumpSelect').value = '';
+    }
+
+    // ==================== RENDER DETAILED SEGMENT CARDS ====================
+    function highlightText(rawText) {
+      const escaped = String(rawText)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+      if (!searchQuery) return escaped;
+      const safeRegex = new RegExp(`(${searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+      return escaped.replace(safeRegex, '<mark class="search-hl">$1</mark>');
+    }
+
+    function renderSegments() {
+      const container = document.getElementById('segmentsContainer');
+
+      let segmentsToDisplay = MASTER_SEGMENTS.map((seg, originalIndex) => ({ seg, originalIndex }));
+
+      if (isSingleFocusMode && !searchQuery) {
+        segmentsToDisplay = [segmentsToDisplay[activeSegmentIndex]];
+      } else if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        segmentsToDisplay = segmentsToDisplay.filter(({ seg }) => {
+          const hay = [
+            seg.badge, seg.title, seg.objective, seg.stageAction, seg.lifeRelation,
+            ...seg.slideVisuals,
+            ...seg.scriptBlocks.map(b => `${b.cue} ${b.note} ${b.text}`)
+          ].join(' ').toLowerCase();
+          return hay.includes(q);
+        });
+      }
+
+      if (segmentsToDisplay.length === 0) {
+        container.innerHTML = `
+          <div class="studio-card rounded-3xl p-10 text-center">
+            <div class="text-4xl mb-3">🔍</div>
+            <h3 class="text-xl font-black text-slate-900 mb-1">No matching script found</h3>
+            <p class="text-sm text-slate-500 mb-4">Try searching for another keyword like "1930", "Steve Jobs", "Grayscale", or "27 kg".</p>
+            <button onclick="clearSearch()" class="px-5 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold">Clear Search</button>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = segmentsToDisplay.map(({ seg, originalIndex }) => {
+        const isDone = completedSegments.has(seg.id);
+        return `
+          <article id="${seg.id}" class="studio-card rounded-3xl p-5 sm:p-8 ${isDone ? 'completed-seg' : ''}">
+            <!-- Top Metadata & Done Checkbox -->
+            <div class="flex flex-wrap items-center justify-between gap-3 pb-4 mb-5 border-b border-slate-100">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="px-3 py-1 rounded-xl bg-blue-600 text-white text-xs font-black tracking-wider uppercase">${seg.badge}</span>
+                <span class="px-3 py-1 rounded-xl bg-slate-100 border border-slate-200 text-slate-800 text-xs font-bold">⏱️ ${seg.time}</span>
+                <span class="px-3 py-1 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-extrabold">🎞️ ${seg.slideLabel}</span>
+              </div>
+
+              <label class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border cursor-pointer select-none transition ${isDone ? 'bg-emerald-600 border-emerald-600 text-white font-bold' : 'bg-slate-50 hover:bg-slate-100 border-slate-300 text-slate-800 font-bold'}">
+                <input type="checkbox" ${isDone ? 'checked' : ''} onchange="toggleSegmentDone('${seg.id}', ${originalIndex})" class="w-4 h-4 accent-emerald-600 rounded cursor-pointer" />
+                <span class="text-xs sm:text-sm">${isDone ? 'Completed ✓' : 'Mark Done'}</span>
+              </label>
+            </div>
+
+            <!-- Segment Title & Objective -->
+            <h2 class="font-ml text-2xl sm:text-3xl font-black text-slate-900 leading-snug mb-3">
+              ${highlightText(seg.title)}
+            </h2>
+            <p class="font-ml teleprompter-meta text-slate-700 mb-5">
+              <strong class="text-slate-900">🎯 ലക്ഷ്യം (Objective):</strong> ${highlightText(seg.objective)}
+            </p>
+
+            <!-- Slide Visual Cue Box -->
+            <div class="rounded-2xl bg-slate-50 border border-slate-200 p-4 mb-4">
+              <div class="text-xs font-black uppercase tracking-wider text-indigo-700 mb-2">🖥️ Projector Slide Cue (${seg.slideLabel})</div>
+              <ul class="space-y-1.5 font-ml text-xs sm:text-sm text-slate-700">
+                ${seg.slideVisuals.map(v => `<li class="flex items-start gap-2"><span class="text-indigo-600 font-bold">▪</span><span>${highlightText(v)}</span></li>`).join('')}
+              </ul>
+            </div>
+
+            <!-- Stage Action / Body Language Cue -->
+            <div class="rounded-2xl bg-amber-50/80 border border-amber-200 p-4 mb-6">
+              <div class="text-xs font-black uppercase tracking-wider text-amber-800 mb-1">🎬 Stage Action &amp; Delivery Cue</div>
+              <p class="font-ml teleprompter-meta text-amber-950 font-medium">
+                ${highlightText(seg.stageAction)}
+              </p>
+            </div>
+
+            <!-- Word-for-Word Teleprompter Script Blocks -->
+            <div class="space-y-5 mb-6">
+              <div class="text-xs font-black uppercase tracking-wider text-blue-700 flex items-center gap-2">
+                <span>🎙️ Word-for-Word Teleprompter Script</span>
+                <span class="h-px flex-1 bg-blue-100"></span>
+              </div>
+
+              ${seg.scriptBlocks.map(block => `
+                <div class="rounded-2xl bg-white border-l-4 border-l-blue-600 border border-slate-200 p-5 sm:p-6 shadow-xs">
+                  <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+                    <span class="font-ml text-xs sm:text-sm font-extrabold text-blue-700">${highlightText(block.cue)}</span>
+                    ${block.note ? `<span class="font-ml text-xs italic text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-lg">(${highlightText(block.note)})</span>` : ''}
+                  </div>
+                  <div class="font-ml teleprompter-script text-slate-900 font-medium whitespace-pre-line">
+                    ${highlightText(block.text)}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+
+            <!-- Deep Life Relation & Psychology Takeaway -->
+            <div class="rounded-2xl bg-emerald-50/70 border border-emerald-200 p-4 sm:p-5">
+              <div class="text-xs font-black uppercase tracking-wider text-emerald-800 mb-1">💡 Deep Life Relation &amp; Psychology Insight</div>
+              <p class="font-ml teleprompter-meta text-emerald-950">
+                ${highlightText(seg.lifeRelation)}
+              </p>
+            </div>
+          </article>
+        `;
+      }).join('');
+
+      updateBottomBar();
+    }
+
+    // ==================== NAVIGATION & PROGRESS ====================
+    function navigateSegment(delta) {
+      const nextIdx = activeSegmentIndex + delta;
+      if (nextIdx >= 0 && nextIdx < MASTER_SEGMENTS.length) {
+        activeSegmentIndex = nextIdx;
+        renderSegmentPills();
+        if (isSingleFocusMode) {
+          renderSegments();
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+          updateBottomBar();
+          const el = document.getElementById(MASTER_SEGMENTS[activeSegmentIndex].id);
+          if (el) {
+            const top = el.getBoundingClientRect().top + window.scrollY - 122;
+            window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+          }
+        }
+      }
+    }
+
+    function updateBottomBar() {
+      const seg = MASTER_SEGMENTS[activeSegmentIndex];
+      document.getElementById('activeSegIndicator').textContent = `Segment ${activeSegmentIndex + 1} of ${MASTER_SEGMENTS.length} (${seg.badge})`;
+      document.getElementById('activeTimeIndicator').textContent = `${seg.time} • ${seg.slideLabel}`;
+      document.getElementById('prevSegBtn').disabled = activeSegmentIndex === 0;
+      document.getElementById('nextSegBtn').disabled = activeSegmentIndex === MASTER_SEGMENTS.length - 1;
+    }
+
+    function toggleSegmentDone(segId, idx) {
+      if (completedSegments.has(segId)) {
+        completedSegments.delete(segId);
+      } else {
+        completedSegments.add(segId);
+        // Auto-advance active segment pointer if in single focus mode
+        if (isSingleFocusMode && idx < MASTER_SEGMENTS.length - 1) {
+          activeSegmentIndex = idx + 1;
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      }
+      localStorage.setItem(STORAGE_KEY_DONE, JSON.stringify(Array.from(completedSegments)));
+      updateProgressUI();
+      renderSegmentPills();
+      renderSegments();
+    }
+
+    function updateProgressUI() {
+      const count = completedSegments.size;
+      const total = MASTER_SEGMENTS.length;
+      document.getElementById('completedCountBadge').textContent = `${count} / ${total} Done`;
+      document.getElementById('completionProgressBar').style.width = `${(count / total) * 100}%`;
+    }
+
+    // ==================== SCROLL SPY IN CONTINUOUS MODE ====================
+    window.addEventListener('scroll', () => {
+      if (isSingleFocusMode || searchQuery) return;
+      const triggerY = 180;
+      let currentIdx = 0;
+      MASTER_SEGMENTS.forEach((seg, idx) => {
+        const el = document.getElementById(seg.id);
+        if (el) {
+          const rect = el.getBoundingClientRect();
+          if (rect.top <= triggerY) {
+            currentIdx = idx;
+          }
+        }
+      });
+      if (currentIdx !== activeSegmentIndex) {
+        activeSegmentIndex = currentIdx;
+        updateBottomBar();
+        const activePill = document.getElementById(`pill-${MASTER_SEGMENTS[currentIdx].id}`);
+        if (activePill) {
+          activePill.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
+      }
+    }, { passive: true });
+
+    // ==================== SEARCH FILTER ====================
+    function handleSearchInput() {
+      searchQuery = document.getElementById('scriptSearchInput').value.trim();
+      renderSegments();
+    }
+
+    function clearSearch() {
+      document.getElementById('scriptSearchInput').value = '';
+      searchQuery = '';
+      renderSegments();
+    }
+
+    // ==================== FONT SCALING ====================
+    function setFontScale(scale) {
+      document.body.classList.remove('font-scale-sm', 'font-scale-md', 'font-scale-lg', 'font-scale-xl');
+      document.body.classList.add(`font-scale-${scale}`);
+      localStorage.setItem(STORAGE_KEY_FONT, scale);
+
+      document.querySelectorAll('.font-scale-btn').forEach(btn => {
+        btn.classList.remove('bg-white', 'text-blue-700', 'shadow-sm', 'border', 'border-slate-200', 'font-black');
+        btn.classList.add('text-slate-600', 'font-bold');
+      });
+      const activeBtn = document.getElementById(`fontBtn-${scale}`);
+      if (activeBtn) {
+        activeBtn.classList.add('bg-white', 'text-blue-700', 'shadow-sm', 'border', 'border-slate-200', 'font-black');
+        activeBtn.classList.remove('text-slate-600', 'font-bold');
+      }
+    }
+
+    // ==================== 45:00 STAGE TIMER ====================
+    function formatTime(secs) {
+      const absSecs = Math.abs(secs);
+      const m = Math.floor(absSecs / 60).toString().padStart(2, '0');
+      const s = (absSecs % 60).toString().padStart(2, '0');
+      return `${secs < 0 ? '-' : ''}${m}:${s}`;
+    }
+
+    function renderTimerDisplay() {
+      const display = document.getElementById('stageTimerDisplay');
+      const label = document.getElementById('timerModeLabel');
+      if (isCountdownMode) {
+        const remaining = TOTAL_SESSION_SECONDS - elapsedSeconds;
+        label.textContent = 'Remaining';
+        display.textContent = formatTime(remaining);
+        if (remaining <= 0) {
+          display.className = 'font-mono text-lg sm:text-xl font-black text-rose-600 leading-none animate-pulse';
+        } else if (remaining <= 300) {
+          display.className = 'font-mono text-lg sm:text-xl font-black text-amber-600 leading-none';
+        } else {
+          display.className = 'font-mono text-lg sm:text-xl font-black text-slate-900 leading-none';
+        }
+      } else {
+        label.textContent = 'Elapsed';
+        display.textContent = formatTime(elapsedSeconds);
+        display.className = 'font-mono text-lg sm:text-xl font-black text-blue-700 leading-none';
+      }
+    }
+
+    function toggleStageTimer() {
+      const btn = document.getElementById('timerToggleBtn');
+      if (!isTimerRunning) {
+        isTimerRunning = true;
+        btn.textContent = '⏸ Pause';
+        btn.classList.replace('bg-blue-600', 'bg-amber-600');
+        btn.classList.replace('hover:bg-blue-700', 'hover:bg-amber-700');
+        timerInterval = setInterval(() => {
+          elapsedSeconds++;
+          renderTimerDisplay();
+        }, 1000);
+      } else {
+        isTimerRunning = false;
+        clearInterval(timerInterval);
+        btn.textContent = '▶ Resume';
+        btn.classList.replace('bg-amber-600', 'bg-blue-600');
+        btn.classList.replace('hover:bg-amber-700', 'hover:bg-blue-700');
+      }
+    }
+
+    function switchTimerDirection() {
+      isCountdownMode = !isCountdownMode;
+      renderTimerDisplay();
+    }
+
+    function resetStageTimer() {
+      isTimerRunning = false;
+      clearInterval(timerInterval);
+      elapsedSeconds = 0;
+      const btn = document.getElementById('timerToggleBtn');
+      btn.textContent = '▶ Start';
+      btn.classList.remove('bg-amber-600', 'hover:bg-amber-700');
+      btn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+      renderTimerDisplay();
+    }
+
+    // ==================== SCREEN WAKE LOCK (KEEP TABLET AWAKE ON STAGE) ====================
+    async function toggleWakeLock() {
+      const btn = document.getElementById('wakeLockBtn');
+      if (!('wakeLock' in navigator)) {
+        showToast('Wake Lock not supported on this browser — set tablet sleep to 30 mins.');
+        return;
+      }
+      try {
+        if (!wakeLockSentinel) {
+          wakeLockSentinel = await navigator.wakeLock.request('screen');
+          btn.textContent = '☀️ Awake: ON';
+          btn.classList.remove('bg-slate-100', 'text-slate-700');
+          btn.classList.add('bg-emerald-50', 'border-emerald-300', 'text-emerald-800');
+          showToast('Screen Wake Lock Active — Tablet will stay awake on stage!');
+          wakeLockSentinel.addEventListener('release', () => {
+            wakeLockSentinel = null;
+            btn.textContent = '☀️ Awake: OFF';
+            btn.classList.add('bg-slate-100', 'text-slate-700');
+            btn.classList.remove('bg-emerald-50', 'border-emerald-300', 'text-emerald-800');
+          });
+        } else {
+          await wakeLockSentinel.release();
+          wakeLockSentinel = null;
+          showToast('Screen Wake Lock Released');
+        }
+      } catch (err) {
+        showToast('Could not activate Wake Lock.');
+      }
+    }
+
+    // ==================== TOAST HELPER ====================
+    let toastTimeout = null;
+    function showToast(msg) {
+      const el = document.getElementById('toastBanner');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => el.classList.add('hidden'), 3000);
+    }
+
+    // Start App
+    initApp();
+  </script>
+</body>
+</html>
